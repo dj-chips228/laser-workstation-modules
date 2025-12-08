@@ -476,6 +476,208 @@ async function handleArchiveSelection() {
         }
     }
     
+    // Функция для загрузки откалиброванных макетов в память устройства
+    async function uploadCalibratedTemplatesToMemory() {
+        if (!getCurrentIp()) {
+            addLog('error', 'Не подключено к устройству!');
+            return;
+        }
+        
+        if (!window.selectedSets || window.selectedSets.size === 0) {
+            addLog('error', 'Не выбрано ни одного набора дизайнов!');
+            alert('Выберите хотя бы один набор дизайнов перед загрузкой');
+            return;
+        }
+        
+        // Получаем смещения
+        const STANDARD_X = 79.84;
+        const STANDARD_Y = 78.64;
+        const offsetX = (window.currentX || STANDARD_X) - STANDARD_X;
+        const offsetY = (window.currentY || STANDARD_Y) - STANDARD_Y;
+        
+        if (!window.supabaseClient) {
+            addLog('error', 'Supabase не инициализирован!');
+            return;
+        }
+        
+        const progressContainer = document.getElementById('calibration-upload-progress');
+        const progressBar = document.getElementById('calibration-upload-progress-bar');
+        const progressText = document.getElementById('calibration-upload-progress-text');
+        const successDiv = document.getElementById('calibration-upload-success');
+        
+        if (progressContainer) progressContainer.style.display = 'block';
+        if (progressBar) progressBar.style.width = '0%';
+        if (progressText) progressText.textContent = '0%';
+        if (successDiv) successDiv.style.display = 'none';
+        
+        try {
+            addLog('info', `📦 Начинаю загрузку ${window.selectedSets.size} наборов с калибровкой: X=${offsetX.toFixed(2)}mm, Y=${offsetY.toFixed(2)}mm`);
+            
+            const selectedSetsArray = Array.from(window.selectedSets);
+            let processed = 0;
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (const setId of selectedSetsArray) {
+                try {
+                    // Получаем информацию о наборе
+                    const { data: setData, error: setError } = await window.supabaseClient
+                        .from('sets')
+                        .select('*')
+                        .eq('id', setId)
+                        .single();
+                    
+                    if (setError || !setData) {
+                        addLog('error', `Не удалось получить данные набора ${setId}: ${setError?.message || 'Не найдено'}`);
+                        errorCount++;
+                        continue;
+                    }
+                    
+                    // Получаем файлы набора
+                    const { data: filesData, error: filesError } = await window.supabaseClient
+                        .from('files')
+                        .select('*')
+                        .eq('set_id', setId);
+                    
+                    if (filesError || !filesData || filesData.length === 0) {
+                        addLog('warning', `Набор "${setData.name}" не содержит файлов`);
+                        continue;
+                    }
+                    
+                    addLog('info', `Обработка набора "${setData.name}" (${filesData.length} файлов)...`);
+                    
+                    // Вызываем API калибровки
+                    const calibrateUrl = 'https://dnvkgezmdmszchaxutlv.supabase.co/functions/v1/calibrate-set';
+                    const calibrateResponse = await fetch(calibrateUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${window.supabaseClient.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudmtnZXptZG1zemNoYXh1dGx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwODA2OTIsImV4cCI6MjA3ODY1NjY5Mn0.qG0rFfDE2qqo_-Np_UjfQDlZlKSIPaRW8PJJ_UDgRik'}`
+                        },
+                        body: JSON.stringify({
+                            setId: setId,
+                            xOffset: offsetX,
+                            yOffset: offsetY
+                        })
+                    });
+                    
+                    if (!calibrateResponse.ok) {
+                        const errorText = await calibrateResponse.text();
+                        throw new Error(`Ошибка калибровки: ${errorText}`);
+                    }
+                    
+                    const calibrateResult = await calibrateResponse.json();
+                    
+                    if (!calibrateResult.success) {
+                        throw new Error(calibrateResult.error || 'Ошибка калибровки');
+                    }
+                    
+                    // Загружаем каждый откалиброванный файл в память устройства
+                    for (const file of filesData) {
+                        try {
+                            // Получаем откалиброванный файл из Storage
+                            const { data: fileData, error: downloadError } = await window.supabaseClient.storage
+                                .from('designs')
+                                .download(calibrateResult.files[file.id] || file.storage_path);
+                            
+                            if (downloadError) {
+                                addLog('warning', `Не удалось загрузить файл ${file.file_name}: ${downloadError.message}`);
+                                continue;
+                            }
+                            
+                            // Конвертируем Blob в ArrayBuffer
+                            const arrayBuffer = await fileData.arrayBuffer();
+                            const uint8Array = new Uint8Array(arrayBuffer);
+                            
+                            // Загружаем в память устройства
+                            const projectName = sanitizeFileName(file.file_name);
+                            await saveGcodeToLocalMemory(
+                                getCurrentIp(),
+                                uint8Array,
+                                projectName,
+                                'xf',
+                                (progress) => {
+                                    const totalProgress = ((processed + progress.progress / filesData.length) / selectedSetsArray.length) * 100;
+                                    if (progressBar) progressBar.style.width = `${totalProgress}%`;
+                                    if (progressText) progressText.textContent = `${Math.round(totalProgress)}%`;
+                                }
+                            );
+                            
+                            addLog('success', `✅ Загружен: ${file.file_name} → ${projectName}`);
+                        } catch (fileError) {
+                            addLog('error', `Ошибка загрузки файла ${file.file_name}: ${fileError.message}`);
+                        }
+                    }
+                    
+                    successCount++;
+                } catch (setError) {
+                    addLog('error', `Ошибка обработки набора ${setId}: ${setError.message}`);
+                    errorCount++;
+                }
+                
+                processed++;
+                const totalProgress = (processed / selectedSetsArray.length) * 100;
+                if (progressBar) progressBar.style.width = `${totalProgress}%`;
+                if (progressText) progressText.textContent = `${Math.round(totalProgress)}%`;
+            }
+            
+            // Обновляем состояние
+            getFlowState().templatesUploaded = true;
+            if (window.updateChecklist) window.updateChecklist('upload', true);
+            if (window.updateTabStatuses) window.updateTabStatuses();
+            if (window.saveStateToLocalStorage) window.saveStateToLocalStorage();
+            
+            if (progressBar) progressBar.style.width = '100%';
+            if (progressText) progressText.textContent = '100%';
+            
+            addLog('success', `✅ Загрузка завершена: ${successCount} наборов успешно, ${errorCount} ошибок`);
+            
+            if (successDiv) {
+                successDiv.style.display = 'block';
+                successDiv.innerHTML = `
+                    <div style="background: #d4edda; padding: 15px; border-radius: 8px; color: #155724;">
+                        <h4>✅ Загрузка завершена</h4>
+                        <p>Успешно загружено: ${successCount} наборов</p>
+                        ${errorCount > 0 ? `<p style="color: #856404;">Ошибок: ${errorCount}</p>` : ''}
+                    </div>
+                `;
+            }
+            
+            // Скрываем прогресс через 2 секунды
+            setTimeout(() => {
+                if (progressContainer) progressContainer.style.display = 'none';
+            }, 2000);
+            
+        } catch (error) {
+            addLog('error', `Ошибка при загрузке откалиброванных макетов: ${error.message}`);
+            if (progressContainer) progressContainer.style.display = 'none';
+        }
+    }
+    
+    // Функция для скачивания архива откалиброванных макетов
+    async function downloadCalibratedTemplates() {
+        if (!window.selectedSets || window.selectedSets.size === 0) {
+            addLog('error', 'Не выбрано ни одного набора дизайнов!');
+            alert('Выберите хотя бы один набор дизайнов перед скачиванием');
+            return;
+        }
+        
+        // Получаем смещения
+        const STANDARD_X = 79.84;
+        const STANDARD_Y = 78.64;
+        const offsetX = (window.currentX || STANDARD_X) - STANDARD_X;
+        const offsetY = (window.currentY || STANDARD_Y) - STANDARD_Y;
+        
+        if (!window.supabaseClient) {
+            addLog('error', 'Supabase не инициализирован!');
+            return;
+        }
+        
+        addLog('info', '📥 Подготовка архива откалиброванных макетов...');
+        // TODO: Реализовать скачивание архива
+        addLog('info', 'Функция скачивания архива будет реализована позже');
+    }
+    
     // Экспортируем функции
     if (typeof window !== 'undefined') {
         window.sanitizeFileName = sanitizeFileName;
@@ -483,5 +685,7 @@ async function handleArchiveSelection() {
         window.extractZipArchive = extractZipArchive;
         window.handleArchiveSelection = handleArchiveSelection;
         window.retryFailedUploads = retryFailedUploads;
+        window.uploadCalibratedTemplatesToMemory = uploadCalibratedTemplatesToMemory;
+        window.downloadCalibratedTemplates = downloadCalibratedTemplates;
     }
 })();
