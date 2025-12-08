@@ -145,13 +145,7 @@ function toggleSet(setId) {
     addLog('info', `Выбрано наборов: ${window.selectedSets.size}`);
 }
 
-// Экранирование HTML
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml уже объявлен выше внутри IIFE
 
 const STANDARD_X = 79.84;
 const STANDARD_Y = 78.64;
