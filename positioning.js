@@ -21,7 +21,8 @@
         return div.innerHTML;
     });
     
-async function loadSets() {
+    // Все функции объявляем внутри IIFE
+    async function loadSets() {
     if (!window.supabaseClient) {
         addLog('warning', 'Supabase не инициализирован, наборы не загружены');
         return;
