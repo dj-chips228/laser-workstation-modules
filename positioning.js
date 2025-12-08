@@ -454,7 +454,7 @@ async function savePositioning() {
     const offsetY = window.currentY - STANDARD_Y;
     
     // Сохраняем локально
-    localStorage.setItem('framingOffsets', JSON.stringify({ x: offsetX, y: offsetY }))
+    localStorage.setItem('framingOffsets', JSON.stringify({ x: offsetX, y: offsetY }));
     
     // Экспортируем функции
     if (typeof window !== 'undefined') {
