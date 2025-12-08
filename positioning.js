@@ -169,19 +169,19 @@ function renderSets() {
     
     // Константы позиционирования
     const STANDARD_X = 79.84;
-const STANDARD_Y = 78.64;
-const FRAMING_WIDTH = 53.98;
-const FRAMING_HEIGHT = 85.6;
-window.currentX = STANDARD_X;
-window.currentY = STANDARD_Y;
-window.framingActive = false;
-window.framingStarting = false; // Флаг, что фрейминг запускается/перезапускается
-
-// Debounce для накопления команд перемещения
-window.moveDebounceTimer = null;
-const MOVE_DEBOUNCE_DELAY = 1000; // 1 секунда задержки
-
-async function startFraming() {
+    const STANDARD_Y = 78.64;
+    const FRAMING_WIDTH = 53.98;
+    const FRAMING_HEIGHT = 85.6;
+    const MOVE_DEBOUNCE_DELAY = 1000; // 1 секунда задержки
+    
+    // Инициализируем глобальные переменные
+    if (!window.currentX) window.currentX = STANDARD_X;
+    if (!window.currentY) window.currentY = STANDARD_Y;
+    if (window.framingActive === undefined) window.framingActive = false;
+    if (window.framingStarting === undefined) window.framingStarting = false;
+    if (!window.moveDebounceTimer) window.moveDebounceTimer = null;
+    
+    async function startFraming() {
     if (!getCurrentIp()) {
         addLog('error', 'Не подключено к устройству!');
         return false;
