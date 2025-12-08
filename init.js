@@ -12,7 +12,7 @@
     
 function initSupabase() {
     if (typeof supabase !== 'undefined' && supabase.createClient) {
-        window.window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         addLog('info', 'Supabase инициализирован');
         return true;
     }
@@ -37,15 +37,15 @@ function waitForSupabase(maxAttempts = 20) {
 
 function saveStateToLocalStorage() {
     const state = {
-        currentIp,
-        deviceInfo,
-        isConnected,
-        window.flowState
+        currentIp: window.currentIp,
+        deviceInfo: window.deviceInfo,
+        isConnected: window.isConnected,
+        flowState: window.flowState
     };
     localStorage.setItem('laserWorkstationState', JSON.stringify(state));
 }
 
-function window.loadStateFromLocalStorage() {
+function loadStateFromLocalStorage() {
     try {
         const saved = localStorage.getItem('laserWorkstationState');
         if (saved) {
