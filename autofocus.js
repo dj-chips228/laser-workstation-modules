@@ -130,10 +130,8 @@ async function moveZAxisRelative(offset) {
     return result;
 }
 
-let currentZ = 0; // Текущая позиция Z для автофокуса
-
 // Константы и вспомогательные функции для автофокуса через две точки
-const FOCUS_TOLERANCE = 3; // пикселей
+// FOCUS_TOLERANCE уже объявлен выше в модуле
 
 function percentile(arr, p) {
     const sorted = [...arr].sort((a, b) => a - b);
