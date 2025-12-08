@@ -18,14 +18,17 @@
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
     });
-    // Убираем активный класс у всех кнопок
-    document.querySelectorAll('.tab').forEach(btn => {
-        btn.classList.remove('active');
+    // Убираем активный класс у всех элементов чеклиста
+    document.querySelectorAll('.checklist-item').forEach(item => {
+        item.classList.remove('active');
     });
     // Показываем выбранную вкладку
     document.getElementById(`tab-${tabName}`).classList.add('active');
-    // Активируем кнопку
-    event.target.classList.add('active');
+    // Активируем соответствующий элемент чеклиста
+    const checklistItem = document.getElementById(`checklist-${tabName}`);
+    if (checklistItem) {
+        checklistItem.classList.add('active');
+    }
     // Активируем/деактивируем обработчик клавиатуры для вкладки позиционирования
     if (tabName === 'position') {
         window.activateKeyboardHandler();
