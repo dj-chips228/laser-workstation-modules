@@ -97,13 +97,8 @@ window.addEventListener('load', () => {
         localStorage.setItem('googleSheetsScriptUrl', correctScriptUrl);
         addLog('info', 'URL скрипта Google Sheets обновлен на правильный');
     }
-    // Загружаем наборы после инициализации Supabase
-    waitForSupabase().then(() => {
-        window.loadSets();
-    }).catch((error) => {
-        console.error('Не удалось инициализировать Supabase:', error);
-        addLog('warning', 'Не удалось загрузить наборы. Проверьте подключение к интернету.');
-    });
+    // Загружаем наборы после инициализации Supabase и загрузки всех модулей
+    // Вызов loadSets будет в основном загрузчике модулей после загрузки positioning.js
     
     // Экспортируем функции
     if (typeof window !== 'undefined') {
