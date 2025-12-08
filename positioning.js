@@ -100,6 +100,13 @@ function renderSets() {
             card.className = 'set-card';
             card.dataset.setId = set.id;
             
+            // Инициализируем selectedSets если еще не инициализирован
+            if (!window.selectedSets) {
+                window.selectedSets = new Set();
+            }
+            if (!window.setPasswords) {
+                window.setPasswords = new Map();
+            }
             const isSelected = window.selectedSets.has(set.id);
             if (isSelected) {
                 card.classList.add('selected');
@@ -132,11 +139,11 @@ function renderSets() {
 
 // Переключение выбора набора
 function toggleSet(setId) {
-    if (window.selectedSets.has(setId)) {
-        window.selectedSets.delete(setId);
-        window.setPasswords.delete(setId);
-    } else {
-        window.selectedSets.add(setId);
+        if (window.selectedSets.has(setId)) {
+            window.selectedSets.delete(setId);
+            window.setPasswords.delete(setId);
+        } else {
+            window.selectedSets.add(setId);
         const set = window.allSets.find(s => s.id === setId);
         if (set && set.password) {
             // Если набор защищен паролем, запрашиваем его
