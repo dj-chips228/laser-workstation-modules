@@ -63,8 +63,10 @@
     }
 }
 
+// Инициализируем Supabase сразу при загрузке модуля
+initSupabase();
+
 window.addEventListener('load', () => {
-    initSupabase();
     // Сбрасываем все статусы при загрузке страницы
     window.flowState.shiftOpened = false;
     window.flowState.autofocusCompleted = false;
