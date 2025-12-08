@@ -110,9 +110,5 @@ window.addEventListener('load', () => {
         window.saveStateToLocalStorage = saveStateToLocalStorage;
         window.loadStateFromLocalStorage = loadStateFromLocalStorage;
         
-        // Инициализация при загрузке
-        if (typeof window.addEventListener !== 'undefined') {
-            window.addEventListener('load', initOnLoad);
-        }
     }
 })();
