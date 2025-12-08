@@ -4,6 +4,13 @@
 (function() {
     'use strict';
     
+    // Защита от повторного выполнения модуля
+    if (window._autofocusModuleLoaded) {
+        console.warn('⚠️ Модуль autofocus уже загружен, пропускаем повторную загрузку');
+        return;
+    }
+    window._autofocusModuleLoaded = true;
+    
     // Используем глобальные функции
     const addLog = window.addLog || console.log;
     const updateChecklist = window.updateChecklist || (() => {});
@@ -15,7 +22,7 @@
     const getIsConnected = () => window.isConnected;
     const getFlowState = () => window.flowState;
     
-    // Локальные переменные модуля
+    // Локальные переменные модуля (внутри IIFE)
     let currentZ = 0;
     const FOCUS_TOLERANCE = 3;
     
