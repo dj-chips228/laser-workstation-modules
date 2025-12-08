@@ -30,7 +30,7 @@
     if (tabName === 'position') {
         window.activateKeyboardHandler();
     } else {
-        dewindow.activateKeyboardHandler();
+        deactivateKeyboardHandler();
     }
     window.updateTabStatuses();
 }
@@ -72,7 +72,7 @@
     addLog('info', '⌨️ Управление клавиатурой активировано (стрелки ←→↑↓)');
 }
 
-function dewindow.activateKeyboardHandler() {
+    function deactivateKeyboardHandler() {
     if (!window.window.window.window.keyboardHandlerActive || !window.window.keyboardHandler) return;
     document.removeEventListener('keydown', window.window.keyboardHandler);
     window.window.window.window.keyboardHandlerActive = false;
