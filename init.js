@@ -110,6 +110,7 @@ window.addEventListener('load', () => {
         window.waitForSupabase = waitForSupabase;
         window.saveStateToLocalStorage = saveStateToLocalStorage;
         window.loadStateFromLocalStorage = loadStateFromLocalStorage;
-        
     }
+});
+
 })();
