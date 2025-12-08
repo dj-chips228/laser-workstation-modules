@@ -10,7 +10,8 @@
     const SUPABASE_URL = 'https://dnvkgezmdmszchaxutlv.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudmtnZXptZG1zemNoYXh1dGx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwODA2OTIsImV4cCI6MjA3ODY1NjY5Mn0.qG0rFfDE2qqo_-Np_UjfQDlZlKSIPaRW8PJJ_UDgRik';
     
-function initSupabase() {
+    // Все функции объявляем внутри IIFE
+    function initSupabase() {
     if (typeof supabase !== 'undefined' && supabase.createClient) {
         window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         addLog('info', 'Supabase инициализирован');
@@ -19,7 +20,7 @@ function initSupabase() {
     return false;
 }
 
-function waitForSupabase(maxAttempts = 20) {
+    function waitForSupabase(maxAttempts = 20) {
     return new Promise((resolve, reject) => {
         let attempts = 0;
         const checkInterval = setInterval(() => {
@@ -35,7 +36,7 @@ function waitForSupabase(maxAttempts = 20) {
     });
 }
 
-function saveStateToLocalStorage() {
+    function saveStateToLocalStorage() {
     const state = {
         currentIp: window.currentIp,
         deviceInfo: window.deviceInfo,
@@ -45,7 +46,7 @@ function saveStateToLocalStorage() {
     localStorage.setItem('laserWorkstationState', JSON.stringify(state));
 }
 
-function loadStateFromLocalStorage() {
+    function loadStateFromLocalStorage() {
     try {
         const saved = localStorage.getItem('laserWorkstationState');
         if (saved) {

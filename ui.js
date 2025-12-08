@@ -36,7 +36,7 @@ function switchTab(tabName) {
     window.updateTabStatuses();
 }
 
-function window.activateKeyboardHandler() {
+    function activateKeyboardHandler() {
     if (window.window.window.window.keyboardHandlerActive) return;
     window.window.keyboardHandler = (event) => {
         // Работаем только если активна вкладка позиционирования
@@ -80,7 +80,7 @@ function dewindow.activateKeyboardHandler() {
     window.window.keyboardHandler = null;
 }
 
-function window.updateTabStatuses() {
+    function updateTabStatuses() {
     // Статус вкладки "Смена"
     const shiftStatus = document.getElementById('shift-status');
     if (!getIsConnected()) {
