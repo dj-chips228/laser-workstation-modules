@@ -539,11 +539,41 @@ function loadPreviousOffsets() {
 }
 
     async function savePositioning() {
-        const offsetX = window.currentX - STANDARD_X;
-        const offsetY = window.currentY - STANDARD_Y;
+        if (!getCurrentIp()) {
+            addLog('error', 'Не подключено к устройству!');
+            return;
+        }
         
-        // Сохраняем локально
-        localStorage.setItem('framingOffsets', JSON.stringify({ x: offsetX, y: offsetY }));
+        try {
+            const offsetX = window.currentX - STANDARD_X;
+            const offsetY = window.currentY - STANDARD_Y;
+            
+            // Сохраняем локально
+            localStorage.setItem('framingOffsets', JSON.stringify({ x: offsetX, y: offsetY }));
+            
+            // Обновляем состояние
+            getFlowState().positioningCompleted = true;
+            updateChecklist('position', true);
+            updateTabStatuses();
+            saveStateToLocalStorage();
+            
+            // Обновляем UI
+            const positionStatus = document.getElementById('position-status');
+            if (positionStatus) {
+                positionStatus.textContent = '✅ Позиционирование завершено';
+            }
+            
+            // Показываем блок с завершенным позиционированием
+            const positionOffsets = document.getElementById('position-offsets');
+            if (positionOffsets) {
+                positionOffsets.style.display = 'block';
+            }
+            
+            addLog('success', `✅ Позиция сохранена: X=${window.currentX.toFixed(2)}mm, Y=${window.currentY.toFixed(2)}mm`);
+            addLog('success', `Смещения: X=${offsetX >= 0 ? '+' : ''}${offsetX.toFixed(2)}mm, Y=${offsetY >= 0 ? '+' : ''}${offsetY.toFixed(2)}mm`);
+        } catch (error) {
+            addLog('error', `Ошибка при сохранении позиции: ${error.message}`);
+        }
     }
     
     // Экспортируем функции
