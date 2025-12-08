@@ -60,6 +60,7 @@ function loadStateFromLocalStorage() {
     } catch (error) {
         console.error('Ошибка загрузки состояния:', error);
     }
+}
 
 window.addEventListener('load', () => {
     initSupabase();
