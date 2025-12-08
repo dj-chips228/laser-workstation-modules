@@ -450,12 +450,13 @@ function loadPreviousOffsets() {
     }
 }
 
-async function savePositioning() {
-    const offsetX = window.currentX - STANDARD_X;
-    const offsetY = window.currentY - STANDARD_Y;
-    
-    // Сохраняем локально
-    localStorage.setItem('framingOffsets', JSON.stringify({ x: offsetX, y: offsetY }));
+    async function savePositioning() {
+        const offsetX = window.currentX - STANDARD_X;
+        const offsetY = window.currentY - STANDARD_Y;
+        
+        // Сохраняем локально
+        localStorage.setItem('framingOffsets', JSON.stringify({ x: offsetX, y: offsetY }));
+    }
     
     // Экспортируем функции
     if (typeof window !== 'undefined') {
