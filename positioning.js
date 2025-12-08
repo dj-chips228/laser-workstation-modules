@@ -151,13 +151,13 @@ const STANDARD_X = 79.84;
 const STANDARD_Y = 78.64;
 const FRAMING_WIDTH = 53.98;
 const FRAMING_HEIGHT = 85.6;
-let window.currentX = STANDARD_X;
-let window.currentY = STANDARD_Y;
-let window.framingActive = false;
-let window.framingStarting = false; // Флаг, что фрейминг запускается/перезапускается
+window.currentX = STANDARD_X;
+window.currentY = STANDARD_Y;
+window.framingActive = false;
+window.framingStarting = false; // Флаг, что фрейминг запускается/перезапускается
 
 // Debounce для накопления команд перемещения
-let window.moveDebounceTimer = null;
+window.moveDebounceTimer = null;
 const MOVE_DEBOUNCE_DELAY = 1000; // 1 секунда задержки
 
 async function startFraming() {
