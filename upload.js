@@ -9,9 +9,9 @@
     const getIsConnected = () => window.isConnected;
     const getFlowState = () => window.flowState;
     const getDeviceInfo = () => window.deviceInfo;
-
     
-function sanitizeFileName(fileName) {
+    // Все функции объявляем внутри IIFE
+    function sanitizeFileName(fileName) {
     // Убираем расширение
     let projectName = fileName.replace(/\.xf$/i, '');
     
