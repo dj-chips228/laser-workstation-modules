@@ -12,9 +12,9 @@
     const getMoveFraming = () => window.moveFraming;
     const activateKeyboardHandler = window.activateKeyboardHandler || (() => {});
     const deactivateKeyboardHandler = window.deactivateKeyboardHandler || (() => {});
-
     
-function switchTab(tabName) {
+    // Все функции объявляем внутри IIFE
+    function switchTab(tabName) {
     // Скрываем все вкладки
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
