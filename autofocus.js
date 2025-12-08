@@ -27,7 +27,8 @@
         configurable: true
     });
     
-async function setFillLight(value) {
+    // Все функции объявляем внутри IIFE для доступа к currentZ
+    async function setFillLight(value) {
     try {
         const response = await fetch(`http://${getCurrentIp()}:8080/peripheral/fill_light`, {
             method: 'POST',
