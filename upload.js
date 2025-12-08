@@ -467,12 +467,13 @@ async function handleArchiveSelection() {
     }
 }
 
-// Функция для повторной загрузки неудачных файлов
-async function retryFailedUploads() {
-    if (!window.failedUploadFiles || window.failedUploadFiles.length === 0) {
-        addLog('warning', 'Нет файлов для повторной загрузки');
-        alert('Нет файлов для повторной загрузки');
-        return;
+    // Функция для повторной загрузки неудачных файлов
+    async function retryFailedUploads() {
+        if (!window.failedUploadFiles || window.failedUploadFiles.length === 0) {
+            addLog('warning', 'Нет файлов для повторной загрузки');
+            alert('Нет файлов для повторной загрузки');
+            return;
+        }
     }
     
     // Экспортируем функции
