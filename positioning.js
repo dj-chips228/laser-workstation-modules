@@ -181,6 +181,27 @@ function renderSets() {
     if (window.framingStarting === undefined) window.framingStarting = false;
     if (!window.moveDebounceTimer) window.moveDebounceTimer = null;
     
+    // Функция для проверки, свободно ли устройство
+    async function checkDeviceReady(maxAttempts = 5) {
+        for (let i = 0; i < maxAttempts; i++) {
+            try {
+                // Пробуем остановить процесс еще раз для надежности
+                await fetch(`http://${getCurrentIp()}:8080/processing/stop`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json, text/plain, */*'
+                    }
+                });
+                // Даем устройству время освободиться
+                await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (e) {
+                // Игнорируем ошибки при проверке
+            }
+        }
+    }
+    
     async function startFraming() {
     if (!getCurrentIp()) {
         addLog('error', 'Не подключено к устройству!');
@@ -190,15 +211,27 @@ function renderSets() {
     // Устанавливаем флаг, что фрейминг запускается
     window.framingStarting = true;
     
-    try {
-        // Сначала останавливаем текущий процесс (выключаем фрейминг)
-        // Передаем true, чтобы не сбрасывать window.framingActive (это перезапуск)
-        addLog('info', '⏹ Остановка текущего процесса перед запуском фрейминга...');
-        await stopFraming(true);
-        
-        // Ждем 1 секунду перед включением
-        addLog('info', '⏳ Ожидание 1 секунда...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
+    const maxRetries = 3;
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            if (attempt > 1) {
+                addLog('info', `🔄 Попытка ${attempt} из ${maxRetries}...`);
+            }
+            
+            // Сначала останавливаем текущий процесс (выключаем фрейминг)
+            // Передаем true, чтобы не сбрасывать window.framingActive (это перезапуск)
+            addLog('info', '⏹ Остановка текущего процесса перед запуском фрейминга...');
+            await stopFraming(true);
+            
+            // Увеличиваем задержку и проверяем готовность устройства
+            const delay = attempt * 1500; // 1.5, 3, 4.5 секунды
+            addLog('info', `⏳ Ожидание ${delay / 1000} секунд для освобождения устройства...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            
+            // Дополнительная проверка готовности устройства
+            await checkDeviceReady(3);
         
         const x1 = window.currentX;
         const y1 = window.currentY;
@@ -234,42 +267,77 @@ function renderSets() {
             body: fullGcode
         });
         
-        const responseText = await response.text();
-        
-        if (response.ok) {
-            try {
-                const responseJson = JSON.parse(responseText);
-                if (responseJson.code === 0) {
-                    window.framingActive = true;
-                    window.framingStarting = false; // Сбрасываем флаг после успешного запуска
-                    
-                    // Обновляем кнопку переключения
-                    const toggleBtn = document.getElementById('toggleFramingBtn');
-                    if (toggleBtn) {
-                        toggleBtn.textContent = '⏹️ Выключить фрейминг';
+            const responseText = await response.text();
+            
+            if (response.ok) {
+                try {
+                    const responseJson = JSON.parse(responseText);
+                    if (responseJson.code === 0) {
+                        window.framingActive = true;
+                        window.framingStarting = false; // Сбрасываем флаг после успешного запуска
+                        
+                        // Обновляем кнопку переключения
+                        const toggleBtn = document.getElementById('toggleFramingBtn');
+                        if (toggleBtn) {
+                            toggleBtn.textContent = '⏹️ Выключить фрейминг';
+                        }
+                        
+                        addLog('success', '✅ Framing успешно запущен!');
+                        return true;
+                    } else {
+                        // Проверяем код ошибки 103 (устройство занято)
+                        if (responseJson.code === 103 || (responseText.includes('code') && responseText.includes('103'))) {
+                            lastError = new Error('Устройство занято. Повторяю попытку...');
+                            if (attempt < maxRetries) {
+                                addLog('warning', `⚠️ Устройство занято (попытка ${attempt}/${maxRetries}). Повторяю через ${(delay + 1500) / 1000} секунд...`);
+                                await new Promise(resolve => setTimeout(resolve, delay + 1500));
+                                continue; // Повторяем попытку
+                            } else {
+                                throw new Error('Устройство занято. Попробуйте остановить текущий процесс и повторить попытку.');
+                            }
+                        } else {
+                            throw new Error(`Код ошибки ${responseJson.code}: ${responseJson.msg || responseText}`);
+                        }
                     }
-                    
-                    addLog('success', '✅ Framing успешно запущен!');
-                    return true;
-                } else {
-                    window.framingStarting = false; // Сбрасываем флаг при ошибке
-                    throw new Error(`Код ошибки ${responseJson.code}: ${responseJson.msg || responseText}`);
+                } catch (e) {
+                    if (e.message.includes('Устройство занято')) {
+                        throw e; // Пробрасываем ошибку "устройство занято" для повторной попытки
+                    }
+                    if (responseText.includes('code') && responseText.includes('103')) {
+                        lastError = new Error('Устройство занято. Повторяю попытку...');
+                        if (attempt < maxRetries) {
+                            addLog('warning', `⚠️ Устройство занято (попытка ${attempt}/${maxRetries}). Повторяю...`);
+                            await new Promise(resolve => setTimeout(resolve, delay + 1500));
+                            continue;
+                        } else {
+                            throw new Error('Устройство занято. Попробуйте остановить текущий процесс и повторить попытку.');
+                        }
+                    }
+                    throw new Error(`Неожиданный ответ: ${responseText}`);
                 }
-            } catch (e) {
-                if (responseText.includes('code') && responseText.includes('103')) {
-                    throw new Error('Устройство занято. Попробуйте остановить текущий процесс и повторить попытку.');
-                }
-                throw new Error(`Неожиданный ответ: ${responseText}`);
+            } else {
+                throw new Error(`HTTP ${response.status}: ${responseText}`);
             }
-        } else {
-            throw new Error(`HTTP ${response.status}: ${responseText}`);
+        } catch (error) {
+            lastError = error;
+            if (attempt < maxRetries && error.message.includes('Устройство занято')) {
+                // Продолжаем попытки
+                continue;
+            } else {
+                // Если это последняя попытка или ошибка не связана с занятостью устройства
+                window.framingStarting = false; // Сбрасываем флаг при ошибке
+                window.framingActive = false;
+                addLog('error', `Ошибка при запуске Framing: ${error.message}`);
+                return false;
+            }
         }
-    } catch (error) {
-        window.framingStarting = false; // Сбрасываем флаг при ошибке
-        window.framingActive = false;
-        addLog('error', `Ошибка при запуске Framing: ${error.message}`);
-        return false;
     }
+    
+    // Если все попытки исчерпаны
+    window.framingStarting = false;
+    window.framingActive = false;
+    addLog('error', `Не удалось запустить Framing после ${maxRetries} попыток: ${lastError ? lastError.message : 'Неизвестная ошибка'}`);
+    return false;
 }
 
 async function stopFraming(skipFramingActiveReset = false) {
