@@ -63,6 +63,14 @@
     }
 }
 
+// Экспортируем функции сразу (до load event)
+if (typeof window !== 'undefined') {
+    window.initSupabase = initSupabase;
+    window.waitForSupabase = waitForSupabase;
+    window.saveStateToLocalStorage = saveStateToLocalStorage;
+    window.loadStateFromLocalStorage = loadStateFromLocalStorage;
+}
+
 // Инициализируем Supabase сразу при загрузке модуля
 initSupabase();
 
@@ -101,14 +109,6 @@ window.addEventListener('load', () => {
     }
     // Загружаем наборы после инициализации Supabase и загрузки всех модулей
     // Вызов loadSets будет в основном загрузчике модулей после загрузки positioning.js
-    
-    // Экспортируем функции
-    if (typeof window !== 'undefined') {
-        window.initSupabase = initSupabase;
-        window.waitForSupabase = waitForSupabase;
-        window.saveStateToLocalStorage = saveStateToLocalStorage;
-        window.loadStateFromLocalStorage = loadStateFromLocalStorage;
-    }
 });
 
 })();
