@@ -137,8 +137,15 @@ function renderSets() {
     });
 }
 
-// Переключение выбора набора
-function toggleSet(setId) {
+    // Переключение выбора набора
+    function toggleSet(setId) {
+        // Инициализируем selectedSets если еще не инициализирован
+        if (!window.selectedSets) {
+            window.selectedSets = new Set();
+        }
+        if (!window.setPasswords) {
+            window.setPasswords = new Map();
+        }
         if (window.selectedSets.has(setId)) {
             window.selectedSets.delete(setId);
             window.setPasswords.delete(setId);
