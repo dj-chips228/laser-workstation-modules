@@ -164,13 +164,11 @@ function renderSets() {
             }
         }
         renderSets();
+        addLog('info', `Выбрано наборов: ${window.selectedSets.size}`);
     }
-    addLog('info', `Выбрано наборов: ${window.selectedSets.size}`);
-}
-
-// escapeHtml уже объявлен выше внутри IIFE
-
-const STANDARD_X = 79.84;
+    
+    // Константы позиционирования
+    const STANDARD_X = 79.84;
 const STANDARD_Y = 78.64;
 const FRAMING_WIDTH = 53.98;
 const FRAMING_HEIGHT = 85.6;
