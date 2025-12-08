@@ -514,110 +514,113 @@ async function handleArchiveSelection() {
             addLog('info', `📦 Начинаю загрузку ${window.selectedSets.size} наборов с калибровкой: X=${offsetX.toFixed(2)}mm, Y=${offsetY.toFixed(2)}mm`);
             
             const selectedSetsArray = Array.from(window.selectedSets);
+            
+            // Вызываем API калибровки для всех наборов сразу
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudmtnZXptZG1zemNoYXh1dGx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwODA2OTIsImV4cCI6MjA3ODY1NjY5Mn0.qG0rFfDE2qqo_-Np_UjfQDlZlKSIPaRW8PJJ_UDgRik';
+            const calibrateUrl = 'https://dnvkgezmdmszchaxutlv.supabase.co/functions/v1/calibrate-set';
+            
+            addLog('info', 'Вызов API калибровки...');
+            const calibrateResponse = await fetch(calibrateUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'apikey': SUPABASE_ANON_KEY
+                },
+                body: JSON.stringify({
+                    setIds: selectedSetsArray,
+                    xOffset: offsetX,
+                    yOffset: offsetY
+                })
+            });
+            
+            if (!calibrateResponse.ok) {
+                const errorText = await calibrateResponse.text();
+                throw new Error(`Ошибка калибровки: ${errorText}`);
+            }
+            
+            const calibrateResult = await calibrateResponse.json();
+            
+            if (!calibrateResult.success || !calibrateResult.archives || !Array.isArray(calibrateResult.archives)) {
+                throw new Error(calibrateResult.error || 'Ошибка калибровки: неверный формат ответа');
+            }
+            
+            addLog('info', `Получено ${calibrateResult.archives.length} архивов для загрузки`);
+            
+            // Получаем все файлы из всех наборов
+            const { data: allFiles, error: filesError } = await window.supabaseClient
+                .from('files')
+                .select('*')
+                .in('set_id', selectedSetsArray);
+            
+            if (filesError) {
+                throw new Error(`Ошибка получения файлов: ${filesError.message}`);
+            }
+            
+            if (!allFiles || allFiles.length === 0) {
+                throw new Error('Не найдено файлов в выбранных наборах');
+            }
+            
+            addLog('info', `Найдено ${allFiles.length} файлов для загрузки`);
+            
+            // Загружаем архивы и извлекаем файлы
             let processed = 0;
             let successCount = 0;
             let errorCount = 0;
             
-            for (const setId of selectedSetsArray) {
+            for (const archive of calibrateResult.archives) {
                 try {
-                    // Получаем информацию о наборе
-                    const { data: setData, error: setError } = await window.supabaseClient
-                        .from('sets')
-                        .select('*')
-                        .eq('id', setId)
-                        .single();
+                    addLog('info', `Загрузка архива: ${archive.name}`);
                     
-                    if (setError || !setData) {
-                        addLog('error', `Не удалось получить данные набора ${setId}: ${setError?.message || 'Не найдено'}`);
-                        errorCount++;
-                        continue;
+                    // Загружаем архив
+                    const archiveResponse = await fetch(archive.url);
+                    if (!archiveResponse.ok) {
+                        throw new Error(`Ошибка загрузки архива: ${archiveResponse.status}`);
                     }
                     
-                    // Получаем файлы набора
-                    const { data: filesData, error: filesError } = await window.supabaseClient
-                        .from('files')
-                        .select('*')
-                        .eq('set_id', setId);
+                    const archiveBlob = await archiveResponse.blob();
+                    const archiveArrayBuffer = await archiveBlob.arrayBuffer();
                     
-                    if (filesError || !filesData || filesData.length === 0) {
-                        addLog('warning', `Набор "${setData.name}" не содержит файлов`);
-                        continue;
-                    }
+                    // Извлекаем файлы из архива
+                    const extractedFiles = await extractZipArchive(new File([archiveArrayBuffer], archive.name, { type: 'application/zip' }));
                     
-                    addLog('info', `Обработка набора "${setData.name}" (${filesData.length} файлов)...`);
-                    
-                    // Вызываем API калибровки
-                    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudmtnZXptZG1zemNoYXh1dGx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwODA2OTIsImV4cCI6MjA3ODY1NjY5Mn0.qG0rFfDE2qqo_-Np_UjfQDlZlKSIPaRW8PJJ_UDgRik';
-                    const calibrateUrl = 'https://dnvkgezmdmszchaxutlv.supabase.co/functions/v1/calibrate-set';
-                    const calibrateResponse = await fetch(calibrateUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                        },
-                        body: JSON.stringify({
-                            setId: setId,
-                            xOffset: offsetX,
-                            yOffset: offsetY
-                        })
-                    });
-                    
-                    if (!calibrateResponse.ok) {
-                        const errorText = await calibrateResponse.text();
-                        throw new Error(`Ошибка калибровки: ${errorText}`);
-                    }
-                    
-                    const calibrateResult = await calibrateResponse.json();
-                    
-                    if (!calibrateResult.success) {
-                        throw new Error(calibrateResult.error || 'Ошибка калибровки');
-                    }
-                    
-                    // Загружаем каждый откалиброванный файл в память устройства
-                    for (const file of filesData) {
+                    // Загружаем каждый файл в память устройства
+                    for (const [fileName, fileData] of Object.entries(extractedFiles)) {
                         try {
-                            // Получаем откалиброванный файл из Storage
-                            const { data: fileData, error: downloadError } = await window.supabaseClient.storage
-                                .from('designs')
-                                .download(calibrateResult.files[file.id] || file.storage_path);
-                            
-                            if (downloadError) {
-                                addLog('warning', `Не удалось загрузить файл ${file.file_name}: ${downloadError.message}`);
-                                continue;
+                            if (!fileName.toLowerCase().endsWith('.xf')) {
+                                continue; // Пропускаем не .xf файлы
                             }
                             
-                            // Конвертируем Blob в ArrayBuffer
-                            const arrayBuffer = await fileData.arrayBuffer();
-                            const uint8Array = new Uint8Array(arrayBuffer);
+                            const projectName = sanitizeFileName(fileName);
+                            const uint8Array = fileData instanceof Uint8Array ? fileData : new Uint8Array(await fileData.arrayBuffer());
                             
-                            // Загружаем в память устройства
-                            const projectName = sanitizeFileName(file.file_name);
                             await saveGcodeToLocalMemory(
                                 getCurrentIp(),
                                 uint8Array,
                                 projectName,
                                 'xf',
                                 (progress) => {
-                                    const totalProgress = ((processed + progress.progress / filesData.length) / selectedSetsArray.length) * 100;
+                                    const totalProgress = ((processed + progress.progress / Object.keys(extractedFiles).length) / calibrateResult.archives.length) * 100;
                                     if (progressBar) progressBar.style.width = `${totalProgress}%`;
                                     if (progressText) progressText.textContent = `${Math.round(totalProgress)}%`;
                                 }
                             );
                             
-                            addLog('success', `✅ Загружен: ${file.file_name} → ${projectName}`);
+                            addLog('success', `✅ Загружен: ${fileName} → ${projectName}`);
+                            processed++;
                         } catch (fileError) {
-                            addLog('error', `Ошибка загрузки файла ${file.file_name}: ${fileError.message}`);
+                            addLog('error', `Ошибка загрузки файла ${fileName}: ${fileError.message}`);
+                            errorCount++;
                         }
                     }
                     
                     successCount++;
-                } catch (setError) {
-                    addLog('error', `Ошибка обработки набора ${setId}: ${setError.message}`);
+                } catch (archiveError) {
+                    addLog('error', `Ошибка обработки архива ${archive.name}: ${archiveError.message}`);
                     errorCount++;
                 }
                 
-                processed++;
-                const totalProgress = (processed / selectedSetsArray.length) * 100;
+                const totalProgress = ((successCount + errorCount) / calibrateResult.archives.length) * 100;
                 if (progressBar) progressBar.style.width = `${totalProgress}%`;
                 if (progressText) progressText.textContent = `${Math.round(totalProgress)}%`;
             }
