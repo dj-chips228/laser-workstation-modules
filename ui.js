@@ -10,8 +10,7 @@
     const getActiveShift = () => window.activeShift;
     const getFramingActive = () => window.framingActive;
     const getMoveFraming = () => window.moveFraming;
-    const activateKeyboardHandler = window.activateKeyboardHandler || (() => {});
-    const deactivateKeyboardHandler = window.deactivateKeyboardHandler || (() => {});
+    // activateKeyboardHandler и deactivateKeyboardHandler объявляются как функции ниже
     
     // Все функции объявляем внутри IIFE
     function switchTab(tabName) {
