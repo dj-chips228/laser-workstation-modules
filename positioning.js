@@ -479,8 +479,7 @@ function loadPreviousOffsets() {
         window.updateCoordinatesDisplay = updateCoordinatesDisplay;
         window.loadPreviousOffsets = loadPreviousOffsets;
         window.savePositioning = savePositioning;
-        window.uploadCalibratedTemplatesToMemory = uploadCalibratedTemplatesToMemory;
-        window.downloadCalibratedTemplates = downloadCalibratedTemplates;
+        // uploadCalibratedTemplatesToMemory и downloadCalibratedTemplates объявлены в модуле upload.js
         window.escapeHtml = escapeHtml;
     }
 })();
