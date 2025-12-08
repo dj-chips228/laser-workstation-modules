@@ -4,6 +4,13 @@
 (function() {
     'use strict';
     
+    // Защита от повторного выполнения модуля
+    if (window._positioningModuleLoaded) {
+        console.warn('⚠️ Модуль positioning уже загружен, пропускаем повторную загрузку');
+        return;
+    }
+    window._positioningModuleLoaded = true;
+    
     const addLog = window.addLog || console.log;
     const getCurrentIp = () => window.currentIp;
     const getIsConnected = () => window.isConnected;
