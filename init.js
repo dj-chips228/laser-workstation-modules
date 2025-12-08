@@ -63,6 +63,18 @@
     }
 }
 
+// Инициализируем flowState сразу (до того, как другие модули начнут его использовать)
+if (typeof window !== 'undefined') {
+    if (!window.flowState) {
+        window.flowState = {
+            shiftOpened: false,
+            autofocusCompleted: false,
+            positioningCompleted: false,
+            templatesUploaded: false
+        };
+    }
+}
+
 // Экспортируем функции сразу (до load event)
 if (typeof window !== 'undefined') {
     window.initSupabase = initSupabase;
