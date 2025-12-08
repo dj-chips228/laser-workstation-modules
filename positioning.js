@@ -151,19 +151,20 @@ function renderSets() {
             window.setPasswords.delete(setId);
         } else {
             window.selectedSets.add(setId);
-        const set = window.allSets.find(s => s.id === setId);
-        if (set && set.password) {
-            // Если набор защищен паролем, запрашиваем его
-            const password = prompt(`Введите пароль для набора "${set.name}":`);
-            if (password) {
-                window.setPasswords.set(setId, password);
-            } else {
-                window.selectedSets.delete(setId);
-                return;
+            const set = window.allSets.find(s => s.id === setId);
+            if (set && set.password) {
+                // Если набор защищен паролем, запрашиваем его
+                const password = prompt(`Введите пароль для набора "${set.name}":`);
+                if (password) {
+                    window.setPasswords.set(setId, password);
+                } else {
+                    window.selectedSets.delete(setId);
+                    return;
+                }
             }
         }
+        renderSets();
     }
-    renderSets();
     addLog('info', `Выбрано наборов: ${window.selectedSets.size}`);
 }
 
