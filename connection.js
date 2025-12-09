@@ -109,6 +109,23 @@
                 throw new Error('Ошибка установки состояния подключения');
             }
             
+            // Получаем статистику устройства для работы со сменами
+            try {
+                const statsResponse = await fetch(`http://${ip}:8080/device/workingInfo`);
+                if (statsResponse.ok) {
+                    const statsText = await statsResponse.text();
+                    try {
+                        const statsData = JSON.parse(statsText);
+                        window.currentStats = statsData.data || statsData;
+                        addLog('info', 'Статистика устройства получена');
+                    } catch (e) {
+                        addLog('warning', 'Не удалось распарсить статистику устройства');
+                    }
+                }
+            } catch (statsError) {
+                addLog('warning', `Не удалось получить статистику устройства: ${statsError.message}`);
+            }
+            
             updateConnectionStatus('connected', `✅ Подключено: ${ip}`);
             addLog('success', `Подключено к устройству: ${ip}`);
             
