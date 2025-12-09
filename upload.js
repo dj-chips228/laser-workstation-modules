@@ -571,16 +571,52 @@ async function handleArchiveSelection() {
             
             for (const archive of calibrateResult.archives) {
                 try {
-                    addLog('info', `Загрузка архива: ${archive.name}`);
+                    addLog('info', `Загрузка архива: ${archive.name} (${archive.url})`);
                     
-                    // Загружаем архив
-                    const archiveResponse = await fetch(archive.url);
-                    if (!archiveResponse.ok) {
-                        throw new Error(`Ошибка загрузки архива: ${archiveResponse.status}`);
+                    // Загружаем архив с повторными попытками
+                    let archiveArrayBuffer = null;
+                    let retryCount = 0;
+                    const maxRetries = 3;
+                    
+                    while (retryCount < maxRetries && !archiveArrayBuffer) {
+                        try {
+                            if (retryCount > 0) {
+                                addLog('info', `🔄 Повторная попытка загрузки архива (${retryCount}/${maxRetries})...`);
+                                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Увеличиваем задержку с каждой попыткой
+                            }
+                            
+                            const archiveResponse = await fetch(archive.url, {
+                                method: 'GET',
+                                cache: 'no-cache',
+                                // Отключаем QUIC, используем HTTP/2 или HTTP/1.1
+                                headers: {
+                                    'Accept': 'application/zip, application/octet-stream, */*'
+                                }
+                            });
+                            
+                            if (!archiveResponse.ok) {
+                                throw new Error(`HTTP ${archiveResponse.status}: ${archiveResponse.statusText}`);
+                            }
+                            
+                            const archiveBlob = await archiveResponse.blob();
+                            archiveArrayBuffer = await archiveBlob.arrayBuffer();
+                            
+                            addLog('success', `✅ Архив ${archive.name} успешно загружен (${(archiveArrayBuffer.byteLength / 1024 / 1024).toFixed(2)} МБ)`);
+                            break; // Успешно загружено, выходим из цикла
+                            
+                        } catch (fetchError) {
+                            retryCount++;
+                            addLog('warning', `⚠️ Ошибка загрузки архива (попытка ${retryCount}/${maxRetries}): ${fetchError.message}`);
+                            
+                            if (retryCount >= maxRetries) {
+                                throw new Error(`Не удалось загрузить архив после ${maxRetries} попыток: ${fetchError.message}`);
+                            }
+                        }
                     }
                     
-                    const archiveBlob = await archiveResponse.blob();
-                    const archiveArrayBuffer = await archiveBlob.arrayBuffer();
+                    if (!archiveArrayBuffer) {
+                        throw new Error('Не удалось загрузить архив');
+                    }
                     
                     // Извлекаем файлы из архива
                     addLog('info', `📦 Извлечение файлов из архива ${archive.name}...`);
