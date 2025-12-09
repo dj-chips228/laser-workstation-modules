@@ -505,6 +505,7 @@ async function getCurrentZPosition() {
 
 async function performAutofocus() {
     if (!getIsConnected()) {
+        console.error('❌ performAutofocus: не подключено', { isConnected: window.isConnected, currentIp: window.currentIp });
         addLog('error', 'Сначала подключитесь к лазеру');
         return;
     }

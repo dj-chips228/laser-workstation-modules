@@ -272,6 +272,7 @@ async function handleArchiveSelection() {
     if (files.length === 0) return;
     
     if (!getIsConnected()) {
+        console.error('❌ handleArchiveSelection: не подключено', { isConnected: window.isConnected, currentIp: window.currentIp });
         addLog('error', 'Сначала подключитесь к лазеру');
         return;
     }

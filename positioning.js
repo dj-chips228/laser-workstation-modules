@@ -398,6 +398,7 @@ async function stopFraming(skipFramingActiveReset = false) {
 
 async function startPositioning() {
     if (!getIsConnected()) {
+        console.error('❌ startPositioning: не подключено', { isConnected: window.isConnected, currentIp: window.currentIp });
         addLog('error', 'Сначала подключитесь к лазеру');
         return;
     }
@@ -418,6 +419,7 @@ async function startPositioning() {
 
 async function toggleFraming() {
     if (!getIsConnected()) {
+        console.error('❌ toggleFraming: не подключено', { isConnected: window.isConnected, currentIp: window.currentIp });
         addLog('error', 'Сначала подключитесь к лазеру');
         return;
     }

@@ -57,6 +57,7 @@
     
     async function openShift() {
         if (!getIsConnected() || !getCurrentStats() || !getDeviceInfo()) {
+            console.error('❌ openShift: не подключено', { isConnected: window.isConnected, currentIp: window.currentIp, hasStats: !!getCurrentStats(), hasDeviceInfo: !!getDeviceInfo() });
             addLog('error', 'Сначала подключитесь к лазеру');
             return;
         }
