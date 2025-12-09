@@ -139,14 +139,7 @@
             document.getElementById('positionBtn').disabled = false;
             document.getElementById('toggleFramingBtn').disabled = false;
             
-            // Обновляем статусы вкладок с небольшой задержкой, чтобы убедиться, что все переменные установлены
-            if (window.updateTabStatuses) {
-                setTimeout(() => {
-                    updateTabStatuses();
-                }, 100);
-            }
-            
-            // Проверяем активную смену после подключения
+            // Сначала проверяем активную смену, ПОТОМ обновляем статусы
             if (window.loadActiveShift) {
                 addLog('info', 'Проверка активной смены после подключения...');
                 setTimeout(async () => {
@@ -154,18 +147,28 @@
                         addLog('info', 'Вызываю loadActiveShift()...');
                         await window.loadActiveShift();
                         addLog('info', 'loadActiveShift() завершен, обновляю статусы...');
-                        // Обновляем статусы вкладок после загрузки смены
+                        // Обновляем статусы вкладок ПОСЛЕ загрузки смены (чтобы показать правильный статус)
                         if (window.updateTabStatuses) {
                             updateTabStatuses();
-                            addLog('info', 'Статусы вкладок обновлены');
+                            addLog('info', 'Статусы вкладок обновлены после загрузки смены');
                         }
                     } catch (error) {
                         addLog('error', `Ошибка загрузки активной смены: ${error.message}`);
                         console.error('Ошибка загрузки активной смены:', error);
+                        // Если ошибка, все равно обновляем статусы
+                        if (window.updateTabStatuses) {
+                            updateTabStatuses();
+                        }
                     }
                 }, 500);
             } else {
                 addLog('warning', 'window.loadActiveShift не найдена!');
+                // Если loadActiveShift не найдена, просто обновляем статусы
+                if (window.updateTabStatuses) {
+                    setTimeout(() => {
+                        updateTabStatuses();
+                    }, 100);
+                }
             }
             
         } catch (error) {

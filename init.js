@@ -87,17 +87,16 @@ if (typeof window !== 'undefined') {
 initSupabase();
 
 window.addEventListener('load', () => {
-    // Сбрасываем все статусы при загрузке страницы
-    window.flowState.shiftOpened = false;
+    // НЕ сбрасываем shiftOpened при загрузке - он будет восстановлен из Google Sheets после подключения
+    // Сбрасываем только локальные статусы (автофокус, позиционирование, загрузка)
     window.flowState.autofocusCompleted = false;
     window.flowState.positioningCompleted = false;
     window.flowState.templatesUploaded = false;
-    // Сбрасываем чеклист
-    window.updateChecklist('shift', false);
+    // Сбрасываем чеклист (кроме shift - он восстановится после проверки активной смены)
     window.updateChecklist('focus', false);
     window.updateChecklist('position', false);
     window.updateChecklist('upload', false);
-    // Скрываем детали смены и формы
+    // Скрываем детали смены и формы (они появятся если найдется активная смена)
     const shiftDetails = document.getElementById('shift-details');
     if (shiftDetails) shiftDetails.style.display = 'none';
     const closeShiftForm = document.getElementById('closeShiftForm');
@@ -110,8 +109,8 @@ window.addEventListener('load', () => {
     document.getElementById('toggleFramingBtn').disabled = true;
     // Загружаем только IP из localStorage (не статусы)
     window.loadStateFromLocalStorage();
-    // Обновляем статусы вкладок (покажут "Подключитесь к лазеру...")
-    window.updateTabStatuses();
+    // НЕ вызываем updateTabStatuses() здесь - он будет вызван после подключения и проверки активной смены
+    // window.updateTabStatuses();
     // Настройки Google Sheets теперь хардкодятся в коде, не используем localStorage
     // Загружаем наборы после инициализации Supabase и загрузки всех модулей
     // Вызов loadSets будет в основном загрузчике модулей после загрузки positioning.js
