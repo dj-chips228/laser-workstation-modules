@@ -100,8 +100,14 @@
                 throw new Error('Не удалось получить информацию об устройстве');
             }
             
+            // Устанавливаем переменные подключения синхронно
             window.currentIp = ip;
             window.isConnected = true;
+            
+            // Убеждаемся, что обе переменные установлены
+            if (!window.currentIp || !window.isConnected) {
+                throw new Error('Ошибка установки состояния подключения');
+            }
             
             updateConnectionStatus('connected', `✅ Подключено: ${ip}`);
             addLog('success', `Подключено к устройству: ${ip}`);
@@ -116,9 +122,11 @@
             document.getElementById('positionBtn').disabled = false;
             document.getElementById('toggleFramingBtn').disabled = false;
             
-            // Обновляем статусы вкладок
+            // Обновляем статусы вкладок с небольшой задержкой, чтобы убедиться, что все переменные установлены
             if (window.updateTabStatuses) {
-                updateTabStatuses();
+                setTimeout(() => {
+                    updateTabStatuses();
+                }, 100);
             }
             
         } catch (error) {
