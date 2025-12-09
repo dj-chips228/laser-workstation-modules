@@ -467,16 +467,16 @@
             return;
         }
         
-        const scriptUrl = localStorage.getItem('googleSheetsScriptUrl');
+        const config = getGoogleSheetsConfig();
+        const scriptUrl = config.scriptUrl;
         if (!scriptUrl) {
-            addLog('info', 'Google Sheets Script URL не настроен');
+            addLog('warning', 'Google Sheets Script URL не настроен');
             return;
         }
         
         addLog('info', `Закрытие смены в Google Sheets: ID=${activeShift.id}, deviceSerial=${activeShift.deviceSerial}`);
         
         try {
-            const config = getGoogleSheetsConfig();
             const sheetName = config.sheetName || '[АВТО] Гравёры_отчёты';
             const formData = new URLSearchParams({
                 action: 'close_shift',
