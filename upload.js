@@ -516,37 +516,71 @@ async function handleArchiveSelection() {
             
             const selectedSetsArray = Array.from(window.selectedSets);
             
-            // Вызываем API калибровки для всех наборов сразу
+            // Разбиваем наборы на части, чтобы не превысить лимиты Edge Function
+            // Обрабатываем по 3 набора за раз (можно изменить при необходимости)
+            const BATCH_SIZE = 3;
             const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudmtnZXptZG1zemNoYXh1dGx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwODA2OTIsImV4cCI6MjA3ODY1NjY5Mn0.qG0rFfDE2qqo_-Np_UjfQDlZlKSIPaRW8PJJ_UDgRik';
             const calibrateUrl = 'https://dnvkgezmdmszchaxutlv.supabase.co/functions/v1/calibrate-set';
             
-            addLog('info', 'Вызов API калибровки...');
-            const calibrateResponse = await fetch(calibrateUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'apikey': SUPABASE_ANON_KEY
-                },
-                body: JSON.stringify({
-                    setIds: selectedSetsArray,
-                    xOffset: offsetX,
-                    yOffset: offsetY
-                })
-            });
+            // Собираем все архивы из всех батчей
+            const allArchives = [];
+            let successCount = 0;
+            let errorCount = 0;
+            let totalFilesProcessed = 0;
+            let totalFilesExpected = 0;
             
-            if (!calibrateResponse.ok) {
-                const errorText = await calibrateResponse.text();
-                throw new Error(`Ошибка калибровки: ${errorText}`);
+            // Обрабатываем наборы батчами
+            for (let batchStart = 0; batchStart < selectedSetsArray.length; batchStart += BATCH_SIZE) {
+                const batchEnd = Math.min(batchStart + BATCH_SIZE, selectedSetsArray.length);
+                const batchSets = selectedSetsArray.slice(batchStart, batchEnd);
+                
+                addLog('info', `🔄 Обработка батча ${Math.floor(batchStart / BATCH_SIZE) + 1}/${Math.ceil(selectedSetsArray.length / BATCH_SIZE)}: наборы ${batchStart + 1}-${batchEnd} из ${selectedSetsArray.length}`);
+                
+                try {
+                    const calibrateResponse = await fetch(calibrateUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'apikey': SUPABASE_ANON_KEY
+                        },
+                        body: JSON.stringify({
+                            setIds: batchSets,
+                            xOffset: offsetX,
+                            yOffset: offsetY
+                        })
+                    });
+                    
+                    if (!calibrateResponse.ok) {
+                        const errorText = await calibrateResponse.text();
+                        throw new Error(`Ошибка калибровки батча: ${errorText}`);
+                    }
+                    
+                    const calibrateResult = await calibrateResponse.json();
+                    
+                    if (!calibrateResult.success || !calibrateResult.archives || !Array.isArray(calibrateResult.archives)) {
+                        throw new Error(calibrateResult.error || 'Ошибка калибровки: неверный формат ответа');
+                    }
+                    
+                    addLog('success', `✅ Батч обработан: получено ${calibrateResult.archives.length} архивов`);
+                    allArchives.push(...calibrateResult.archives);
+                    
+                    // Небольшая задержка между батчами
+                    if (batchEnd < selectedSetsArray.length) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                    
+                } catch (batchError) {
+                    addLog('error', `❌ Ошибка обработки батча: ${batchError.message}`);
+                    errorCount++;
+                }
             }
             
-            const calibrateResult = await calibrateResponse.json();
-            
-            if (!calibrateResult.success || !calibrateResult.archives || !Array.isArray(calibrateResult.archives)) {
-                throw new Error(calibrateResult.error || 'Ошибка калибровки: неверный формат ответа');
+            if (allArchives.length === 0) {
+                throw new Error('Не удалось получить ни одного архива из всех батчей');
             }
             
-            addLog('info', `Получено ${calibrateResult.archives.length} архивов для загрузки`);
+            addLog('info', `📦 Всего получено ${allArchives.length} архивов из ${selectedSetsArray.length} наборов`);
             
             // Получаем все файлы из всех наборов
             const { data: allFiles, error: filesError } = await window.supabaseClient
@@ -565,12 +599,8 @@ async function handleArchiveSelection() {
             addLog('info', `Найдено ${allFiles.length} файлов для загрузки`);
             
             // Загружаем архивы и извлекаем файлы
-            let successCount = 0;
-            let errorCount = 0;
-            let totalFilesProcessed = 0; // Общее количество обработанных файлов
-            let totalFilesExpected = 0; // Общее количество файлов (будет подсчитано после извлечения)
-            
-            for (let archiveIndex = 0; archiveIndex < calibrateResult.archives.length; archiveIndex++) {
+            for (let archiveIndex = 0; archiveIndex < allArchives.length; archiveIndex++) {
+                const archive = allArchives[archiveIndex];
                 const archive = calibrateResult.archives[archiveIndex];
                 try {
                     addLog('info', `Загрузка архива: ${archive.name} (${archive.url})`);
@@ -752,8 +782,8 @@ async function handleArchiveSelection() {
                                 'xf',
                                 (progress) => {
                                     // Прогресс: 0-10% загрузка архивов, 10-95% загрузка файлов, 95-100% финализация
-                                    const archiveProgress = (archiveIndex / calibrateResult.archives.length) * 10;
-                                    const fileProgressInArchive = ((i + 1) / xfFiles.length) * (85 / calibrateResult.archives.length);
+                                    const archiveProgress = (archiveIndex / allArchives.length) * 10;
+                                    const fileProgressInArchive = ((i + 1) / xfFiles.length) * (85 / allArchives.length);
                                     const totalProgress = Math.min(95, archiveProgress + fileProgressInArchive);
                                     
                                     if (progressBar) progressBar.style.width = `${totalProgress}%`;
