@@ -524,10 +524,7 @@ async function handleArchiveSelection() {
             
             // Собираем все архивы из всех батчей
             const allArchives = [];
-            let successCount = 0;
-            let errorCount = 0;
-            let totalFilesProcessed = 0;
-            let totalFilesExpected = 0;
+            let batchErrorCount = 0; // Ошибки при обработке батчей
             
             // Обрабатываем наборы батчами
             for (let batchStart = 0; batchStart < selectedSetsArray.length; batchStart += BATCH_SIZE) {
@@ -572,7 +569,7 @@ async function handleArchiveSelection() {
                     
                 } catch (batchError) {
                     addLog('error', `❌ Ошибка обработки батча: ${batchError.message}`);
-                    errorCount++;
+                    batchErrorCount++;
                 }
             }
             
@@ -671,6 +668,7 @@ async function handleArchiveSelection() {
             };
             
             // Подсчитываем файлы во всех архивах
+            let totalFilesExpected = 0;
             for (let archiveIndex = 0; archiveIndex < allArchives.length; archiveIndex++) {
                 const archive = allArchives[archiveIndex];
                 try {
