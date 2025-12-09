@@ -140,8 +140,10 @@
             document.getElementById('toggleFramingBtn').disabled = false;
             
             // Сначала проверяем активную смену, ПОТОМ обновляем статусы
+            // НЕ вызываем updateTabStatuses() сразу - он будет вызван после проверки смены
             if (window.loadActiveShift) {
                 addLog('info', 'Проверка активной смены после подключения...');
+                // Вызываем сразу, без задержки, чтобы показать состояние загрузки
                 setTimeout(async () => {
                     try {
                         addLog('info', 'Вызываю loadActiveShift()...');
@@ -160,7 +162,7 @@
                             updateTabStatuses();
                         }
                     }
-                }, 500);
+                }, 200);
             } else {
                 addLog('warning', 'window.loadActiveShift не найдена!');
                 // Если loadActiveShift не найдена, просто обновляем статусы

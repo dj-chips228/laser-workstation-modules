@@ -295,10 +295,13 @@
         const openShiftBtn = document.getElementById('openShiftBtn');
         if (shiftStatus) {
             shiftStatus.textContent = '⏳ Проверка активной смены...';
+            shiftStatus.className = 'status processing';
+            addLog('info', 'Статус установлен: ⏳ Проверка активной смены...');
         }
         if (openShiftBtn) {
             openShiftBtn.disabled = true;
             openShiftBtn.classList.add('loading');
+            addLog('info', 'Кнопка "Открыть смену" заблокирована и помечена как loading');
         }
         
         const deviceInfo = getDeviceInfo();
@@ -339,6 +342,10 @@
                 if (openShiftBtn) {
                     openShiftBtn.disabled = true;
                     openShiftBtn.classList.remove('loading');
+                    addLog('info', 'Кнопка "Открыть смену" разблокирована (смена найдена)');
+                }
+                if (shiftStatus) {
+                    shiftStatus.className = 'status success';
                 }
                 document.getElementById('closeShiftBtn').disabled = false;
                 
@@ -373,6 +380,10 @@
                 if (openShiftBtn) {
                     openShiftBtn.disabled = false;
                     openShiftBtn.classList.remove('loading');
+                    addLog('info', 'Кнопка "Открыть смену" разблокирована (смена не найдена)');
+                }
+                if (shiftStatus) {
+                    shiftStatus.className = 'status info';
                 }
                 if (window.updateTabStatuses) {
                     updateTabStatuses();
@@ -385,9 +396,15 @@
             flowState.shiftOpened = false;
             updateChecklist('shift', false);
             // Убираем состояние загрузки и активируем кнопку даже при ошибке
+            const openShiftBtn = document.getElementById('openShiftBtn');
+            const shiftStatus = document.getElementById('shift-status');
             if (openShiftBtn) {
                 openShiftBtn.disabled = false;
                 openShiftBtn.classList.remove('loading');
+                addLog('info', 'Кнопка "Открыть смену" разблокирована (ошибка проверки)');
+            }
+            if (shiftStatus) {
+                shiftStatus.className = 'status error';
             }
             if (window.updateTabStatuses) {
                 updateTabStatuses();
