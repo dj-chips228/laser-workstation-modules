@@ -565,11 +565,13 @@ async function handleArchiveSelection() {
             addLog('info', `Найдено ${allFiles.length} файлов для загрузки`);
             
             // Загружаем архивы и извлекаем файлы
-            let processed = 0;
             let successCount = 0;
             let errorCount = 0;
+            let totalFilesProcessed = 0; // Общее количество обработанных файлов
+            let totalFilesExpected = 0; // Общее количество файлов (будет подсчитано после извлечения)
             
-            for (const archive of calibrateResult.archives) {
+            for (let archiveIndex = 0; archiveIndex < calibrateResult.archives.length; archiveIndex++) {
+                const archive = calibrateResult.archives[archiveIndex];
                 try {
                     addLog('info', `Загрузка архива: ${archive.name} (${archive.url})`);
                     
@@ -692,6 +694,21 @@ async function handleArchiveSelection() {
                         continue;
                     }
                     
+                    // Подсчитываем общее количество файлов (только при первом архиве)
+                    if (archiveIndex === 0) {
+                        // Пробуем оценить общее количество файлов
+                        // Если архив один, используем текущее количество
+                        if (calibrateResult.archives.length === 1) {
+                            totalFilesExpected = xfFiles.length;
+                        } else {
+                            // Для нескольких архивов будем считать по мере обработки
+                            totalFilesExpected = xfFiles.length; // Начальная оценка
+                        }
+                    } else {
+                        // Обновляем общее количество при обработке следующих архивов
+                        totalFilesExpected += xfFiles.length;
+                    }
+                    
                     addLog('info', `🚀 Начинаю загрузку ${xfFiles.length} файлов в память лазера...`);
                     
                     // Загружаем каждый файл в память устройства
@@ -734,9 +751,13 @@ async function handleArchiveSelection() {
                                 projectName,
                                 'xf',
                                 (progress) => {
-                                    const totalProgress = 40 + ((processed + (i + 1) / xfFiles.length) / calibrateResult.archives.length) * 55;
+                                    // Прогресс: 0-10% загрузка архивов, 10-95% загрузка файлов, 95-100% финализация
+                                    const archiveProgress = (archiveIndex / calibrateResult.archives.length) * 10;
+                                    const fileProgressInArchive = ((i + 1) / xfFiles.length) * (85 / calibrateResult.archives.length);
+                                    const totalProgress = Math.min(95, archiveProgress + fileProgressInArchive);
+                                    
                                     if (progressBar) progressBar.style.width = `${totalProgress}%`;
-                                    if (progressText) progressText.textContent = `${Math.round(totalProgress)}% (${i + 1}/${xfFiles.length})`;
+                                    if (progressText) progressText.textContent = `${Math.round(totalProgress)}% (${totalFilesProcessed + i + 1}/${totalFilesExpected || '?'})`;
                                     addLog('info', `${fileName}: ${progress.message}`);
                                 }
                             );
@@ -744,7 +765,7 @@ async function handleArchiveSelection() {
                             if (result && result.success) {
                                 addLog('success', `✅ Файл ${i + 1}/${xfFiles.length} успешно загружен в память: ${fileName} → ${projectName}`);
                                 filesUploaded++;
-                                processed++;
+                                totalFilesProcessed++;
                             } else {
                                 const errorMsg = result?.message || result?.error?.message || 'Неизвестная ошибка';
                                 addLog('error', `❌ Ошибка загрузки файла ${fileName}: ${errorMsg}`);
@@ -789,9 +810,10 @@ async function handleArchiveSelection() {
                     errorCount++;
                 }
                 
-                const totalProgress = ((successCount + errorCount) / calibrateResult.archives.length) * 100;
-                if (progressBar) progressBar.style.width = `${totalProgress}%`;
-                if (progressText) progressText.textContent = `${Math.round(totalProgress)}%`;
+                // Обновляем прогресс после обработки архива
+                const archiveProgress = ((archiveIndex + 1) / calibrateResult.archives.length) * 95;
+                if (progressBar) progressBar.style.width = `${Math.min(95, archiveProgress)}%`;
+                if (progressText) progressText.textContent = `${Math.round(Math.min(95, archiveProgress))}%`;
             }
             
             // Обновляем состояние
