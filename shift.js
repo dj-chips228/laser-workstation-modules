@@ -13,7 +13,7 @@
     
     // Доступ к глобальным переменным через window
     const getCurrentIp = () => window.currentIp;
-    const getIsConnected = () => window.isConnected;
+    const getIsConnected = () => window.isConnected && window.currentIp;
     const getCurrentStats = () => window.currentStats;
     const getDeviceInfo = () => window.deviceInfo;
     const getActiveShift = () => window.activeShift;

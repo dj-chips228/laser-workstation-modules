@@ -6,7 +6,7 @@
     
     const addLog = window.addLog || console.log;
     const getCurrentIp = () => window.currentIp;
-    const getIsConnected = () => window.isConnected;
+    const getIsConnected = () => window.isConnected && window.currentIp;
     const getFlowState = () => window.flowState;
     const getDeviceInfo = () => window.deviceInfo;
     

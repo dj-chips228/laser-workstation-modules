@@ -5,7 +5,7 @@
     'use strict';
     
     const addLog = window.addLog || console.log;
-    const getIsConnected = () => window.isConnected;
+    const getIsConnected = () => window.isConnected && window.currentIp;
     const getFlowState = () => window.flowState;
     const getActiveShift = () => window.activeShift;
     const getFramingActive = () => window.framingActive;
