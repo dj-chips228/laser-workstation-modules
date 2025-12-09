@@ -112,13 +112,7 @@ window.addEventListener('load', () => {
     window.loadStateFromLocalStorage();
     // Обновляем статусы вкладок (покажут "Подключитесь к лазеру...")
     window.updateTabStatuses();
-    // Автоматически обновляем URL скрипта на правильный
-    const correctScriptUrl = 'https://script.google.com/macros/s/AKfycbyAMCwnycprSlT9rFO5vkSfGUJpoQoEDH3QGV6P_nNShRyveQXInPXedrb6Zu9Kf5K87A/exec';
-    const currentUrl = localStorage.getItem('googleSheetsScriptUrl');
-    if (currentUrl !== correctScriptUrl) {
-        localStorage.setItem('googleSheetsScriptUrl', correctScriptUrl);
-        addLog('info', 'URL скрипта Google Sheets обновлен на правильный');
-    }
+    // Настройки Google Sheets теперь хардкодятся в коде, не используем localStorage
     // Загружаем наборы после инициализации Supabase и загрузки всех модулей
     // Вызов loadSets будет в основном загрузчике модулей после загрузки positioning.js
 });

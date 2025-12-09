@@ -144,9 +144,10 @@ function updateChecklist(item, completed) {
 }
 
 function getGoogleSheetsConfig() {
-    const sheetsId = localStorage.getItem('googleSheetsId');
-    const sheetName = localStorage.getItem('googleSheetName') || '[АВТО] Гравёры_отчёты';
-    const scriptUrl = localStorage.getItem('googleSheetsScriptUrl');
+    // Хардкод настроек Google Sheets - не используем localStorage, так как программа используется на разных компьютерах
+    const sheetsId = '1yI8zjx0MpuxKxnFpihGNR7-LziZZRiJ0TEf78LZW0S4';
+    const sheetName = '[АВТО] Гравёры_отчёты';
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbyAMCwnycprSlT9rFO5vkSfGUJpoQoEDH3QGV6P_nNShRyveQXInPXedrb6Zu9Kf5K87A/exec';
     return { sheetsId, sheetName, scriptUrl };
 }
 
