@@ -271,7 +271,7 @@ async function handleArchiveSelection() {
     const files = document.getElementById('archiveInput').files;
     if (files.length === 0) return;
     
-    if (!window.isConnected || !window.currentIp) {
+    if (!getIsConnected()) {
         addLog('error', 'Сначала подключитесь к лазеру');
         return;
     }
