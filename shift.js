@@ -402,6 +402,13 @@
         
         try {
             const config = getGoogleSheetsConfig();
+            const sheetName = config.sheetName || '[АВТО] Гравёры_отчёты';
+            
+            addLog('info', `=== ОТПРАВКА ОТКРЫТИЯ СМЕНЫ ===`);
+            addLog('info', `URL: ${scriptUrl}`);
+            addLog('info', `Конфиг: ${JSON.stringify(config)}`);
+            addLog('info', `Используемый лист: "${sheetName}"`);
+            
             const shiftData = {
                 id: activeShift.id,
                 device_serial: activeShift.deviceSerial,
@@ -411,14 +418,11 @@
                 status: 'active'
             };
             
-            addLog('info', `=== ОТПРАВКА ОТКРЫТИЯ СМЕНЫ ===`);
-            addLog('info', `URL: ${scriptUrl}`);
-            addLog('info', `Лист: "${config.sheetName}"`);
             addLog('info', `Данные: ${JSON.stringify(shiftData, null, 2)}`);
             
             const formData = new URLSearchParams({
                 action: 'save_shift',
-                sheet_name: config.sheetName,
+                sheet_name: sheetName,
                 data: JSON.stringify(shiftData)
             });
             
@@ -471,9 +475,10 @@
         
         try {
             const config = getGoogleSheetsConfig();
+            const sheetName = config.sheetName || '[АВТО] Гравёры_отчёты';
             const formData = new URLSearchParams({
                 action: 'close_shift',
-                sheet_name: config.sheetName,
+                sheet_name: sheetName,
                 shift_id: activeShift.id,
                 device_serial: activeShift.deviceSerial
             });
@@ -509,6 +514,7 @@
         
         try {
             const config = getGoogleSheetsConfig();
+            const sheetName = config.sheetName || '[АВТО] Гравёры_отчёты';
             const reportData = {
                 id: report.id,
                 device_serial: report.deviceSerial,
@@ -526,7 +532,7 @@
             
             const formData = new URLSearchParams({
                 action: 'save_report',
-                sheet_name: config.sheetName,
+                sheet_name: sheetName,
                 data: JSON.stringify(reportData)
             });
             
