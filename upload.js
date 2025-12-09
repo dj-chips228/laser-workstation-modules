@@ -598,100 +598,114 @@ async function handleArchiveSelection() {
             
             addLog('info', `Найдено ${allFiles.length} файлов для загрузки`);
             
-            // Загружаем архивы и извлекаем файлы
+            // Сначала подсчитываем общее количество .xf файлов во всех архивах
+            addLog('info', '📊 Подсчет общего количества файлов во всех архивах...');
+            let totalFilesExpected = 0;
+            
+            // Функция загрузки через fetch
+            const loadViaFetch = async (url) => {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    cache: 'no-cache',
+                    headers: {
+                        'Accept': 'application/zip, application/octet-stream, */*'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const blob = await response.blob();
+                return await blob.arrayBuffer();
+            };
+            
+            // Функция загрузки через XMLHttpRequest (fallback)
+            const loadViaXHR = (url) => {
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('GET', url, true);
+                    xhr.responseType = 'arraybuffer';
+                    xhr.onload = () => {
+                        if (xhr.status === 200) {
+                            resolve(xhr.response);
+                        } else {
+                            reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+                        }
+                    };
+                    xhr.onerror = () => reject(new Error('Network error'));
+                    xhr.ontimeout = () => reject(new Error('Timeout'));
+                    xhr.timeout = 60000;
+                    xhr.send();
+                });
+            };
+            
+            // Функция загрузки архива с retry
+            const loadArchive = async (archive) => {
+                let archiveArrayBuffer = null;
+                let retryCount = 0;
+                const maxRetries = 3;
+                
+                while (retryCount < maxRetries && !archiveArrayBuffer) {
+                    try {
+                        if (retryCount > 0) {
+                            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+                        }
+                        try {
+                            archiveArrayBuffer = await loadViaFetch(archive.url);
+                            break;
+                        } catch (fetchError) {
+                            if (fetchError.message.includes('QUIC') || fetchError.message.includes('Failed to fetch')) {
+                                archiveArrayBuffer = await loadViaXHR(archive.url);
+                                break;
+                            } else {
+                                throw fetchError;
+                            }
+                        }
+                    } catch (error) {
+                        retryCount++;
+                        if (retryCount >= maxRetries) {
+                            throw new Error(`Не удалось загрузить архив после ${maxRetries} попыток: ${error.message}`);
+                        }
+                    }
+                }
+                return archiveArrayBuffer;
+            };
+            
+            // Подсчитываем файлы во всех архивах
             for (let archiveIndex = 0; archiveIndex < allArchives.length; archiveIndex++) {
                 const archive = allArchives[archiveIndex];
                 try {
-                    addLog('info', `Загрузка архива: ${archive.name} (${archive.url})`);
+                    const archiveArrayBuffer = await loadArchive(archive);
+                    const extractedFiles = await extractZipArchive(new File([archiveArrayBuffer], archive.name, { type: 'application/zip' }));
                     
-                    // Загружаем архив с повторными попытками и альтернативными методами
-                    let archiveArrayBuffer = null;
-                    let retryCount = 0;
-                    const maxRetries = 3;
-                    
-                    // Функция загрузки через fetch
-                    const loadViaFetch = async (url) => {
-                        const response = await fetch(url, {
-                            method: 'GET',
-                            cache: 'no-cache',
-                            headers: {
-                                'Accept': 'application/zip, application/octet-stream, */*'
-                            }
-                        });
-                        
-                        if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                        }
-                        
-                        const blob = await response.blob();
-                        return await blob.arrayBuffer();
-                    };
-                    
-                    // Функция загрузки через XMLHttpRequest (fallback)
-                    const loadViaXHR = (url) => {
-                        return new Promise((resolve, reject) => {
-                            const xhr = new XMLHttpRequest();
-                            xhr.open('GET', url, true);
-                            xhr.responseType = 'arraybuffer';
-                            
-                            xhr.onload = () => {
-                                if (xhr.status === 200) {
-                                    resolve(xhr.response);
-                                } else {
-                                    reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
-                                }
-                            };
-                            
-                            xhr.onerror = () => {
-                                reject(new Error('Network error'));
-                            };
-                            
-                            xhr.ontimeout = () => {
-                                reject(new Error('Timeout'));
-                            };
-                            
-                            xhr.timeout = 60000; // 60 секунд
-                            xhr.send();
-                        });
-                    };
-                    
-                    while (retryCount < maxRetries && !archiveArrayBuffer) {
-                        try {
-                            if (retryCount > 0) {
-                                addLog('info', `🔄 Повторная попытка загрузки архива (${retryCount}/${maxRetries})...`);
-                                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-                            }
-                            
-                            // Пробуем сначала через fetch
-                            try {
-                                archiveArrayBuffer = await loadViaFetch(archive.url);
-                                addLog('success', `✅ Архив ${archive.name} успешно загружен через fetch (${(archiveArrayBuffer.byteLength / 1024 / 1024).toFixed(2)} МБ)`);
-                                break;
-                            } catch (fetchError) {
-                                // Если fetch не сработал, пробуем через XHR
-                                if (fetchError.message.includes('QUIC') || fetchError.message.includes('Failed to fetch')) {
-                                    addLog('info', `⚠️ Fetch не сработал, пробую через XMLHttpRequest...`);
-                                    archiveArrayBuffer = await loadViaXHR(archive.url);
-                                    addLog('success', `✅ Архив ${archive.name} успешно загружен через XMLHttpRequest (${(archiveArrayBuffer.byteLength / 1024 / 1024).toFixed(2)} МБ)`);
-                                    break;
-                                } else {
-                                    throw fetchError; // Другие ошибки пробрасываем дальше
-                                }
-                            }
-                            
-                        } catch (error) {
-                            retryCount++;
-                            addLog('warning', `⚠️ Ошибка загрузки архива (попытка ${retryCount}/${maxRetries}): ${error.message}`);
-                            
-                            if (retryCount >= maxRetries) {
-                                throw new Error(`Не удалось загрузить архив после ${maxRetries} попыток: ${error.message}`);
-                            }
-                        }
+                    if (Array.isArray(extractedFiles)) {
+                        const xfFiles = extractedFiles.filter(f => f && f.name && f.name.toLowerCase().endsWith('.xf'));
+                        totalFilesExpected += xfFiles.length;
+                        addLog('info', `📦 Архив ${archiveIndex + 1}/${allArchives.length}: найдено ${xfFiles.length} .xf файлов`);
                     }
+                } catch (e) {
+                    addLog('warning', `⚠️ Не удалось подсчитать файлы в архиве ${archive.name}: ${e.message}`);
+                }
+            }
+            
+            addLog('info', `📊 Всего найдено ${totalFilesExpected} .xf файлов в ${allArchives.length} архивах`);
+            
+            if (totalFilesExpected === 0) {
+                throw new Error('Не найдено .xf файлов во всех архивах');
+            }
+            
+            // Теперь загружаем архивы и извлекаем файлы
+            let successCount = 0;
+            let errorCount = 0;
+            let totalFilesProcessed = 0;
+            
+            for (let archiveIndex = 0; archiveIndex < allArchives.length; archiveIndex++) {
+                const archive = allArchives[archiveIndex];
+                try {
+                    addLog('info', `Загрузка архива ${archiveIndex + 1}/${allArchives.length}: ${archive.name}`);
                     
-                    if (!archiveArrayBuffer) {
-                        throw new Error('Не удалось загрузить архив');
-                    }
+                    // Загружаем архив (уже загружали при подсчете, но нужно загрузить снова для обработки)
+                    const archiveArrayBuffer = await loadArchive(archive);
+                    addLog('success', `✅ Архив ${archive.name} успешно загружен (${(archiveArrayBuffer.byteLength / 1024 / 1024).toFixed(2)} МБ)`);
                     
                     // Извлекаем файлы из архива
                     addLog('info', `📦 Извлечение файлов из архива ${archive.name}...`);
@@ -723,21 +737,6 @@ async function handleArchiveSelection() {
                         continue;
                     }
                     
-                    // Подсчитываем общее количество файлов (только при первом архиве)
-                    if (archiveIndex === 0) {
-                        // Пробуем оценить общее количество файлов
-                        // Если архив один, используем текущее количество
-                        if (allArchives.length === 1) {
-                            totalFilesExpected = xfFiles.length;
-                        } else {
-                            // Для нескольких архивов будем считать по мере обработки
-                            totalFilesExpected = xfFiles.length; // Начальная оценка
-                        }
-                    } else {
-                        // Обновляем общее количество при обработке следующих архивов
-                        totalFilesExpected += xfFiles.length;
-                    }
-                    
                     addLog('info', `🚀 Начинаю загрузку ${xfFiles.length} файлов в память лазера...`);
                     
                     // Загружаем каждый файл в память устройства
@@ -754,7 +753,7 @@ async function handleArchiveSelection() {
                             const uint8Array = fileData instanceof Uint8Array ? fileData : new Uint8Array(fileData);
                             
                             addLog('info', `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                            addLog('info', `📄 Файл ${i + 1}/${xfFiles.length}: ${fileName} (${uint8Array.length} байт) → ${projectName}`);
+                            addLog('info', `📄 Файл ${totalFilesProcessed + 1}/${totalFilesExpected}: ${fileName} (${uint8Array.length} байт) → ${projectName}`);
                             addLog('info', `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                             
                             // Останавливаем процесс перед загрузкой каждого файла
@@ -767,10 +766,8 @@ async function handleArchiveSelection() {
                                         'Accept': 'application/json, text/plain, */*'
                                     }
                                 });
-                                addLog('info', `🔄 Остановлен процесс перед загрузкой файла ${i + 1}`);
                                 await new Promise(resolve => setTimeout(resolve, 500));
                             } catch (e) {
-                                addLog('warning', `⚠️ Не удалось остановить процесс: ${e.message}`);
                                 await new Promise(resolve => setTimeout(resolve, 300));
                             }
                             
@@ -780,19 +777,18 @@ async function handleArchiveSelection() {
                                 projectName,
                                 'xf',
                                 (progress) => {
-                                    // Прогресс: 0-10% загрузка архивов, 10-95% загрузка файлов, 95-100% финализация
-                                    const archiveProgress = (archiveIndex / allArchives.length) * 10;
-                                    const fileProgressInArchive = ((i + 1) / xfFiles.length) * (85 / allArchives.length);
-                                    const totalProgress = Math.min(95, archiveProgress + fileProgressInArchive);
+                                    // Прогресс: 0-5% загрузка архивов, 5-95% загрузка файлов, 95-100% финализация
+                                    const filesProgress = (totalFilesProcessed / totalFilesExpected) * 90; // 0-90%
+                                    const currentFileProgress = (progress.progress / 100) * (90 / totalFilesExpected); // Прогресс текущего файла
+                                    const totalProgress = Math.min(95, 5 + filesProgress + currentFileProgress);
                                     
                                     if (progressBar) progressBar.style.width = `${totalProgress}%`;
-                                    if (progressText) progressText.textContent = `${Math.round(totalProgress)}% (${totalFilesProcessed + i + 1}/${totalFilesExpected || '?'})`;
-                                    addLog('info', `${fileName}: ${progress.message}`);
+                                    if (progressText) progressText.textContent = `${Math.round(totalProgress)}% (${totalFilesProcessed + 1}/${totalFilesExpected})`;
                                 }
                             );
                             
                             if (result && result.success) {
-                                addLog('success', `✅ Файл ${i + 1}/${xfFiles.length} успешно загружен в память: ${fileName} → ${projectName}`);
+                                addLog('success', `✅ Файл ${totalFilesProcessed + 1}/${totalFilesExpected} успешно загружен в память: ${fileName} → ${projectName}`);
                                 filesUploaded++;
                                 totalFilesProcessed++;
                             } else {
@@ -800,6 +796,7 @@ async function handleArchiveSelection() {
                                 addLog('error', `❌ Ошибка загрузки файла ${fileName}: ${errorMsg}`);
                                 filesFailed++;
                                 errorCount++;
+                                totalFilesProcessed++; // Считаем и неудачные попытки
                             }
                             
                             // Задержка между файлами
@@ -810,6 +807,7 @@ async function handleArchiveSelection() {
                             addLog('error', `❌ Ошибка загрузки файла ${fileName}: ${fileError.message}`);
                             filesFailed++;
                             errorCount++;
+                            totalFilesProcessed++; // Считаем и неудачные попытки
                         }
                     }
                     
@@ -840,9 +838,11 @@ async function handleArchiveSelection() {
                 }
                 
                 // Обновляем прогресс после обработки архива
-                const archiveProgress = ((archiveIndex + 1) / allArchives.length) * 95;
-                if (progressBar) progressBar.style.width = `${Math.min(95, archiveProgress)}%`;
-                if (progressText) progressText.textContent = `${Math.round(Math.min(95, archiveProgress))}%`;
+                const archiveProgress = ((archiveIndex + 1) / allArchives.length) * 5; // 0-5% для архивов
+                const filesProgress = (totalFilesProcessed / totalFilesExpected) * 90; // 5-95% для файлов
+                const totalProgress = Math.min(95, archiveProgress + filesProgress);
+                if (progressBar) progressBar.style.width = `${totalProgress}%`;
+                if (progressText) progressText.textContent = `${Math.round(totalProgress)}% (${totalFilesProcessed}/${totalFilesExpected})`;
             }
             
             // Обновляем состояние
