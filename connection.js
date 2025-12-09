@@ -146,6 +146,21 @@
                 }, 100);
             }
             
+            // Проверяем активную смену после подключения
+            if (window.loadActiveShift) {
+                setTimeout(async () => {
+                    try {
+                        await window.loadActiveShift();
+                        // Обновляем статусы вкладок после загрузки смены
+                        if (window.updateTabStatuses) {
+                            updateTabStatuses();
+                        }
+                    } catch (error) {
+                        console.error('Ошибка загрузки активной смены:', error);
+                    }
+                }, 200);
+            }
+            
         } catch (error) {
             addLog('error', `Ошибка подключения: ${error.message}`);
             updateConnectionStatus('error', `❌ Ошибка: ${error.message}`);
