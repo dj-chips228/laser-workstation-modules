@@ -601,7 +601,6 @@ async function handleArchiveSelection() {
             // Загружаем архивы и извлекаем файлы
             for (let archiveIndex = 0; archiveIndex < allArchives.length; archiveIndex++) {
                 const archive = allArchives[archiveIndex];
-                const archive = calibrateResult.archives[archiveIndex];
                 try {
                     addLog('info', `Загрузка архива: ${archive.name} (${archive.url})`);
                     
