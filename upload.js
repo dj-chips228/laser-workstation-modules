@@ -583,37 +583,125 @@ async function handleArchiveSelection() {
                     const archiveArrayBuffer = await archiveBlob.arrayBuffer();
                     
                     // Извлекаем файлы из архива
+                    addLog('info', `📦 Извлечение файлов из архива ${archive.name}...`);
                     const extractedFiles = await extractZipArchive(new File([archiveArrayBuffer], archive.name, { type: 'application/zip' }));
                     
+                    addLog('info', `🔍 Результат extractZipArchive: тип=${typeof extractedFiles}, isArray=${Array.isArray(extractedFiles)}, длина=${extractedFiles?.length || 'N/A'}`);
+                    
+                    // extractZipArchive возвращает массив объектов {name, data}
+                    if (!Array.isArray(extractedFiles)) {
+                        addLog('error', `❌ extractZipArchive вернул не массив! Тип: ${typeof extractedFiles}, значение:`, extractedFiles);
+                        throw new Error('Неверный формат данных из архива');
+                    }
+                    
+                    addLog('info', `📋 Всего файлов в архиве: ${extractedFiles.length}`);
+                    
+                    // Фильтруем только .xf файлы
+                    const xfFiles = extractedFiles.filter(f => {
+                        const isXf = f && f.name && f.name.toLowerCase().endsWith('.xf');
+                        if (!isXf && f && f.name) {
+                            addLog('info', `⏭️ Пропущен файл (не .xf): ${f.name}`);
+                        }
+                        return isXf;
+                    });
+                    
+                    addLog('info', `📦 Найдено ${xfFiles.length} .xf файлов в архиве ${archive.name}`);
+                    
+                    if (xfFiles.length === 0) {
+                        addLog('warning', `⚠️ В архиве ${archive.name} не найдено .xf файлов`);
+                        continue;
+                    }
+                    
+                    addLog('info', `🚀 Начинаю загрузку ${xfFiles.length} файлов в память лазера...`);
+                    
                     // Загружаем каждый файл в память устройства
-                    for (const [fileName, fileData] of Object.entries(extractedFiles)) {
+                    let filesUploaded = 0;
+                    let filesFailed = 0;
+                    
+                    for (let i = 0; i < xfFiles.length; i++) {
+                        const file = xfFiles[i];
+                        const fileName = file.name;
+                        const fileData = file.data;
+                        
                         try {
-                            if (!fileName.toLowerCase().endsWith('.xf')) {
-                                continue; // Пропускаем не .xf файлы
+                            const projectName = sanitizeFileName(fileName);
+                            const uint8Array = fileData instanceof Uint8Array ? fileData : new Uint8Array(fileData);
+                            
+                            addLog('info', `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                            addLog('info', `📄 Файл ${i + 1}/${xfFiles.length}: ${fileName} (${uint8Array.length} байт) → ${projectName}`);
+                            addLog('info', `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                            
+                            // Останавливаем процесс перед загрузкой каждого файла
+                            try {
+                                await fetch(`http://${getCurrentIp()}:8080/processing/stop`, {
+                                    method: 'POST',
+                                    mode: 'cors',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json, text/plain, */*'
+                                    }
+                                });
+                                addLog('info', `🔄 Остановлен процесс перед загрузкой файла ${i + 1}`);
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                            } catch (e) {
+                                addLog('warning', `⚠️ Не удалось остановить процесс: ${e.message}`);
+                                await new Promise(resolve => setTimeout(resolve, 300));
                             }
                             
-                            const projectName = sanitizeFileName(fileName);
-                            const uint8Array = fileData instanceof Uint8Array ? fileData : new Uint8Array(await fileData.arrayBuffer());
-                            
-                            await saveGcodeToLocalMemory(
+                            const result = await saveGcodeToLocalMemory(
                                 getCurrentIp(),
                                 uint8Array,
                                 projectName,
                                 'xf',
                                 (progress) => {
-                                    const totalProgress = ((processed + progress.progress / Object.keys(extractedFiles).length) / calibrateResult.archives.length) * 100;
+                                    const totalProgress = 40 + ((processed + (i + 1) / xfFiles.length) / calibrateResult.archives.length) * 55;
                                     if (progressBar) progressBar.style.width = `${totalProgress}%`;
-                                    if (progressText) progressText.textContent = `${Math.round(totalProgress)}%`;
+                                    if (progressText) progressText.textContent = `${Math.round(totalProgress)}% (${i + 1}/${xfFiles.length})`;
+                                    addLog('info', `${fileName}: ${progress.message}`);
                                 }
                             );
                             
-                            addLog('success', `✅ Загружен: ${fileName} → ${projectName}`);
-                            processed++;
+                            if (result && result.success) {
+                                addLog('success', `✅ Файл ${i + 1}/${xfFiles.length} успешно загружен в память: ${fileName} → ${projectName}`);
+                                filesUploaded++;
+                                processed++;
+                            } else {
+                                const errorMsg = result?.message || result?.error?.message || 'Неизвестная ошибка';
+                                addLog('error', `❌ Ошибка загрузки файла ${fileName}: ${errorMsg}`);
+                                filesFailed++;
+                                errorCount++;
+                            }
+                            
+                            // Задержка между файлами
+                            if (i < xfFiles.length - 1) {
+                                await new Promise(resolve => setTimeout(resolve, 300));
+                            }
                         } catch (fileError) {
-                            addLog('error', `Ошибка загрузки файла ${fileName}: ${fileError.message}`);
+                            addLog('error', `❌ Ошибка загрузки файла ${fileName}: ${fileError.message}`);
+                            filesFailed++;
                             errorCount++;
                         }
                     }
+                    
+                    addLog('info', `📊 Архив ${archive.name}: загружено ${filesUploaded}/${xfFiles.length} файлов`);
+                    
+                    // Финальная остановка процесса
+                    try {
+                        await fetch(`http://${getCurrentIp()}:8080/processing/stop`, {
+                            method: 'POST',
+                            mode: 'cors',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json, text/plain, */*'
+                            }
+                        });
+                        addLog('info', '✅ Финальная остановка процесса');
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                    } catch (e) {
+                        addLog('warning', `⚠️ Не удалось выполнить финальную остановку: ${e.message}`);
+                    }
+                    
+                    addLog('info', `📊 Архив ${archive.name}: загружено ${filesUploaded}/${xfFiles.length} файлов`);
                     
                     successCount++;
                 } catch (archiveError) {
