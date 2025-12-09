@@ -290,6 +290,17 @@
             return;
         }
         
+        // Показываем состояние загрузки
+        const shiftStatus = document.getElementById('shift-status');
+        const openShiftBtn = document.getElementById('openShiftBtn');
+        if (shiftStatus) {
+            shiftStatus.textContent = '⏳ Проверка активной смены...';
+        }
+        if (openShiftBtn) {
+            openShiftBtn.disabled = true;
+            openShiftBtn.classList.add('loading');
+        }
+        
         const deviceInfo = getDeviceInfo();
         let serial = deviceInfo?.snCode || deviceInfo?.deviceSN;
         if (!serial) {
@@ -324,9 +335,11 @@
                 addLog('info', 'Чеклист обновлен: shift = true');
                 
                 const startTime = new Date(shift.startTime).toLocaleString('ru-RU');
-                // Не обновляем shift-status напрямую - это сделает updateTabStatuses()
-                // document.getElementById('shift-status').textContent = `✅ Смена открыта: ${startTime}`;
-                document.getElementById('openShiftBtn').disabled = true;
+                // Убираем состояние загрузки
+                if (openShiftBtn) {
+                    openShiftBtn.disabled = true;
+                    openShiftBtn.classList.remove('loading');
+                }
                 document.getElementById('closeShiftBtn').disabled = false;
                 
                 const currentStats = getCurrentStats();
@@ -356,6 +369,11 @@
                 const flowState = getFlowState();
                 flowState.shiftOpened = false;
                 updateChecklist('shift', false);
+                // Убираем состояние загрузки и активируем кнопку
+                if (openShiftBtn) {
+                    openShiftBtn.disabled = false;
+                    openShiftBtn.classList.remove('loading');
+                }
                 if (window.updateTabStatuses) {
                     updateTabStatuses();
                 }
@@ -366,6 +384,14 @@
             const flowState = getFlowState();
             flowState.shiftOpened = false;
             updateChecklist('shift', false);
+            // Убираем состояние загрузки и активируем кнопку даже при ошибке
+            if (openShiftBtn) {
+                openShiftBtn.disabled = false;
+                openShiftBtn.classList.remove('loading');
+            }
+            if (window.updateTabStatuses) {
+                updateTabStatuses();
+            }
         }
     }
     

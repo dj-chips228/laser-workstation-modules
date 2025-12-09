@@ -99,6 +99,12 @@
     const flowState = getFlowState();
     const isConnected = getIsConnected();
     const activeShift = getActiveShift();
+    const openShiftBtn = document.getElementById('openShiftBtn');
+    
+    // Если кнопка в состоянии загрузки, не меняем статус (он уже установлен в loadActiveShift)
+    if (openShiftBtn && openShiftBtn.classList.contains('loading')) {
+        return;
+    }
     
     console.log('🔍 updateTabStatuses:', {
         isConnected,
