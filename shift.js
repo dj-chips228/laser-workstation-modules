@@ -284,7 +284,9 @@
     }
     
     async function loadActiveShift() {
+        addLog('info', '🔍 loadActiveShift() вызвана');
         if (!getIsConnected() || !getDeviceInfo()) {
+            addLog('warning', `loadActiveShift: не подключено или нет deviceInfo. isConnected=${getIsConnected()}, hasDeviceInfo=${!!getDeviceInfo()}`);
             return;
         }
         
@@ -295,11 +297,16 @@
             const model = deviceInfo?.model || '';
             const productID = deviceInfo?.productID || '';
             serial = `${deviceName}_${model}_${productID}`.replace(/\s+/g, '_').replace(/^_+|_+$/g, '') || 'unknown';
+            addLog('info', `Серийный номер не найден, используется составной: ${serial}`);
+        } else {
+            addLog('info', `Найден серийный номер: ${serial}`);
         }
         
         try {
+            addLog('info', `Проверяю активную смену для устройства: ${serial}`);
             const shiftFromSheets = await getActiveShiftFromGoogleSheets(serial);
             if (shiftFromSheets) {
+                addLog('success', `✅ Найдена активная смена: ID=${shiftFromSheets.id}`);
                 const shift = {
                     id: shiftFromSheets.id,
                     deviceSerial: shiftFromSheets.device_serial,
@@ -312,7 +319,9 @@
                 setActiveShift(shift);
                 const flowState = getFlowState();
                 flowState.shiftOpened = true;
+                addLog('info', `flowState.shiftOpened установлен в true`);
                 updateChecklist('shift', true);
+                addLog('info', 'Чеклист обновлен: shift = true');
                 
                 const startTime = new Date(shift.startTime).toLocaleString('ru-RU');
                 document.getElementById('shift-status').textContent = `✅ Смена открыта: ${startTime}`;
@@ -334,13 +343,21 @@
                 }
                 
                 addLog('success', `Найдена активная смена в Google Sheets: ${startTime}`);
-                updateTabStatuses();
+                if (window.updateTabStatuses) {
+                    updateTabStatuses();
+                    addLog('info', 'updateTabStatuses() вызван после загрузки смены');
+                } else {
+                    addLog('warning', 'updateTabStatuses не найден!');
+                }
             } else {
+                addLog('info', 'Активная смена не найдена в Google Sheets');
                 setActiveShift(null);
                 const flowState = getFlowState();
                 flowState.shiftOpened = false;
                 updateChecklist('shift', false);
-                addLog('info', 'Активная смена не найдена в Google Sheets');
+                if (window.updateTabStatuses) {
+                    updateTabStatuses();
+                }
             }
         } catch (error) {
             addLog('error', `Ошибка проверки активной смены в Google Sheets: ${error.message}`);

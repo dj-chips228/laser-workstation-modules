@@ -148,17 +148,24 @@
             
             // Проверяем активную смену после подключения
             if (window.loadActiveShift) {
+                addLog('info', 'Проверка активной смены после подключения...');
                 setTimeout(async () => {
                     try {
+                        addLog('info', 'Вызываю loadActiveShift()...');
                         await window.loadActiveShift();
+                        addLog('info', 'loadActiveShift() завершен, обновляю статусы...');
                         // Обновляем статусы вкладок после загрузки смены
                         if (window.updateTabStatuses) {
                             updateTabStatuses();
+                            addLog('info', 'Статусы вкладок обновлены');
                         }
                     } catch (error) {
+                        addLog('error', `Ошибка загрузки активной смены: ${error.message}`);
                         console.error('Ошибка загрузки активной смены:', error);
                     }
-                }, 200);
+                }, 500);
+            } else {
+                addLog('warning', 'window.loadActiveShift не найдена!');
             }
             
         } catch (error) {
