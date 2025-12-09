@@ -9,7 +9,11 @@
     const updateChecklist = window.updateChecklist || (() => {});
     const updateTabStatuses = window.updateTabStatuses || (() => {});
     const saveStateToLocalStorage = window.saveStateToLocalStorage || (() => {});
-    const getGoogleSheetsConfig = window.getGoogleSheetsConfig || (() => ({}));
+    // getGoogleSheetsConfig должна быть доступна из ui.js (загружается раньше)
+    const getGoogleSheetsConfig = window.getGoogleSheetsConfig;
+    if (!getGoogleSheetsConfig) {
+        console.error('❌ getGoogleSheetsConfig не найдена! ui.js должен загружаться раньше shift.js');
+    }
     
     // Доступ к глобальным переменным через window
     const getCurrentIp = () => window.currentIp;
