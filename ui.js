@@ -91,11 +91,27 @@
     function updateTabStatuses() {
     // Статус вкладки "Смена"
     const shiftStatus = document.getElementById('shift-status');
-    if (!getIsConnected()) {
+    if (!shiftStatus) {
+        console.warn('⚠️ shift-status элемент не найден');
+        return;
+    }
+    
+    const flowState = getFlowState();
+    const isConnected = getIsConnected();
+    const activeShift = getActiveShift();
+    
+    console.log('🔍 updateTabStatuses:', {
+        isConnected,
+        shiftOpened: flowState?.shiftOpened,
+        hasActiveShift: !!activeShift,
+        activeShiftId: activeShift?.id
+    });
+    
+    if (!isConnected) {
         shiftStatus.textContent = 'Подключитесь к лазеру для работы со сменами';
-    } else if (getFlowState().shiftOpened) {
-        if (getActiveShift()) {
-            const startTime = new Date(getActiveShift().startTime).toLocaleString('ru-RU');
+    } else if (flowState?.shiftOpened) {
+        if (activeShift && activeShift.startTime) {
+            const startTime = new Date(activeShift.startTime).toLocaleString('ru-RU');
             shiftStatus.textContent = `✅ Смена открыта: ${startTime}`;
         } else {
             shiftStatus.textContent = '✅ Смена открыта';

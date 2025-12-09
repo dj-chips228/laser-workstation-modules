@@ -324,7 +324,8 @@
                 addLog('info', 'Чеклист обновлен: shift = true');
                 
                 const startTime = new Date(shift.startTime).toLocaleString('ru-RU');
-                document.getElementById('shift-status').textContent = `✅ Смена открыта: ${startTime}`;
+                // Не обновляем shift-status напрямую - это сделает updateTabStatuses()
+                // document.getElementById('shift-status').textContent = `✅ Смена открыта: ${startTime}`;
                 document.getElementById('openShiftBtn').disabled = true;
                 document.getElementById('closeShiftBtn').disabled = false;
                 
