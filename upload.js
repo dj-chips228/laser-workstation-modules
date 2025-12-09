@@ -573,43 +573,87 @@ async function handleArchiveSelection() {
                 try {
                     addLog('info', `Загрузка архива: ${archive.name} (${archive.url})`);
                     
-                    // Загружаем архив с повторными попытками
+                    // Загружаем архив с повторными попытками и альтернативными методами
                     let archiveArrayBuffer = null;
                     let retryCount = 0;
                     const maxRetries = 3;
+                    
+                    // Функция загрузки через fetch
+                    const loadViaFetch = async (url) => {
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            cache: 'no-cache',
+                            headers: {
+                                'Accept': 'application/zip, application/octet-stream, */*'
+                            }
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
+                        const blob = await response.blob();
+                        return await blob.arrayBuffer();
+                    };
+                    
+                    // Функция загрузки через XMLHttpRequest (fallback)
+                    const loadViaXHR = (url) => {
+                        return new Promise((resolve, reject) => {
+                            const xhr = new XMLHttpRequest();
+                            xhr.open('GET', url, true);
+                            xhr.responseType = 'arraybuffer';
+                            
+                            xhr.onload = () => {
+                                if (xhr.status === 200) {
+                                    resolve(xhr.response);
+                                } else {
+                                    reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+                                }
+                            };
+                            
+                            xhr.onerror = () => {
+                                reject(new Error('Network error'));
+                            };
+                            
+                            xhr.ontimeout = () => {
+                                reject(new Error('Timeout'));
+                            };
+                            
+                            xhr.timeout = 60000; // 60 секунд
+                            xhr.send();
+                        });
+                    };
                     
                     while (retryCount < maxRetries && !archiveArrayBuffer) {
                         try {
                             if (retryCount > 0) {
                                 addLog('info', `🔄 Повторная попытка загрузки архива (${retryCount}/${maxRetries})...`);
-                                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Увеличиваем задержку с каждой попыткой
+                                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
                             }
                             
-                            const archiveResponse = await fetch(archive.url, {
-                                method: 'GET',
-                                cache: 'no-cache',
-                                // Отключаем QUIC, используем HTTP/2 или HTTP/1.1
-                                headers: {
-                                    'Accept': 'application/zip, application/octet-stream, */*'
+                            // Пробуем сначала через fetch
+                            try {
+                                archiveArrayBuffer = await loadViaFetch(archive.url);
+                                addLog('success', `✅ Архив ${archive.name} успешно загружен через fetch (${(archiveArrayBuffer.byteLength / 1024 / 1024).toFixed(2)} МБ)`);
+                                break;
+                            } catch (fetchError) {
+                                // Если fetch не сработал, пробуем через XHR
+                                if (fetchError.message.includes('QUIC') || fetchError.message.includes('Failed to fetch')) {
+                                    addLog('info', `⚠️ Fetch не сработал, пробую через XMLHttpRequest...`);
+                                    archiveArrayBuffer = await loadViaXHR(archive.url);
+                                    addLog('success', `✅ Архив ${archive.name} успешно загружен через XMLHttpRequest (${(archiveArrayBuffer.byteLength / 1024 / 1024).toFixed(2)} МБ)`);
+                                    break;
+                                } else {
+                                    throw fetchError; // Другие ошибки пробрасываем дальше
                                 }
-                            });
-                            
-                            if (!archiveResponse.ok) {
-                                throw new Error(`HTTP ${archiveResponse.status}: ${archiveResponse.statusText}`);
                             }
                             
-                            const archiveBlob = await archiveResponse.blob();
-                            archiveArrayBuffer = await archiveBlob.arrayBuffer();
-                            
-                            addLog('success', `✅ Архив ${archive.name} успешно загружен (${(archiveArrayBuffer.byteLength / 1024 / 1024).toFixed(2)} МБ)`);
-                            break; // Успешно загружено, выходим из цикла
-                            
-                        } catch (fetchError) {
+                        } catch (error) {
                             retryCount++;
-                            addLog('warning', `⚠️ Ошибка загрузки архива (попытка ${retryCount}/${maxRetries}): ${fetchError.message}`);
+                            addLog('warning', `⚠️ Ошибка загрузки архива (попытка ${retryCount}/${maxRetries}): ${error.message}`);
                             
                             if (retryCount >= maxRetries) {
-                                throw new Error(`Не удалось загрузить архив после ${maxRetries} попыток: ${fetchError.message}`);
+                                throw new Error(`Не удалось загрузить архив после ${maxRetries} попыток: ${error.message}`);
                             }
                         }
                     }
