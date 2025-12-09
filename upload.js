@@ -727,7 +727,7 @@ async function handleArchiveSelection() {
                     if (archiveIndex === 0) {
                         // Пробуем оценить общее количество файлов
                         // Если архив один, используем текущее количество
-                        if (calibrateResult.archives.length === 1) {
+                        if (allArchives.length === 1) {
                             totalFilesExpected = xfFiles.length;
                         } else {
                             // Для нескольких архивов будем считать по мере обработки
@@ -840,7 +840,7 @@ async function handleArchiveSelection() {
                 }
                 
                 // Обновляем прогресс после обработки архива
-                const archiveProgress = ((archiveIndex + 1) / calibrateResult.archives.length) * 95;
+                const archiveProgress = ((archiveIndex + 1) / allArchives.length) * 95;
                 if (progressBar) progressBar.style.width = `${Math.min(95, archiveProgress)}%`;
                 if (progressText) progressText.textContent = `${Math.round(Math.min(95, archiveProgress))}%`;
             }
