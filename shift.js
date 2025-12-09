@@ -56,9 +56,29 @@
     }
     
     async function openShift() {
-        if (!getIsConnected() || !getCurrentStats() || !getDeviceInfo()) {
+        if (!getIsConnected() || !getDeviceInfo()) {
             console.error('❌ openShift: не подключено', { isConnected: window.isConnected, currentIp: window.currentIp, hasStats: !!getCurrentStats(), hasDeviceInfo: !!getDeviceInfo() });
             addLog('error', 'Сначала подключитесь к лазеру');
+            return;
+        }
+        
+        // Если статистика отсутствует, получаем её
+        if (!getCurrentStats()) {
+            addLog('info', 'Получение статистики устройства...');
+            try {
+                const stats = await fetchWorkingInfo(getCurrentIp());
+                setCurrentStats(stats);
+                addLog('success', 'Статистика устройства получена');
+            } catch (error) {
+                addLog('error', `Не удалось получить статистику устройства: ${error.message}`);
+                return;
+            }
+        }
+        
+        // Проверяем валидность статистики
+        const validation = validateStats(getCurrentStats());
+        if (!validation.valid) {
+            addLog('error', validation.error);
             return;
         }
         
@@ -67,7 +87,6 @@
         btn.classList.add('loading');
         
         try {
-            const validation = validateStats(getCurrentStats());
             if (!validation.valid) {
                 alert(`Ошибка валидации: ${validation.error}`);
                 addLog('error', validation.error);
