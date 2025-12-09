@@ -348,13 +348,14 @@
     }
     
     async function getActiveShiftFromGoogleSheets(deviceSerial) {
-        const scriptUrl = localStorage.getItem('googleSheetsScriptUrl');
+        const config = getGoogleSheetsConfig();
+        const scriptUrl = config.scriptUrl;
         if (!scriptUrl) {
+            addLog('warning', 'Google Sheets Script URL не настроен');
             return null;
         }
         
         try {
-            const config = getGoogleSheetsConfig();
             const sheetName = config.sheetName || '[АВТО] Гравёры_отчёты';
             addLog('info', `Проверка активной смены в Google Sheets для устройства: ${deviceSerial}`);
             
@@ -395,14 +396,14 @@
         const activeShift = getActiveShift();
         if (!activeShift) return;
         
-        const scriptUrl = localStorage.getItem('googleSheetsScriptUrl');
+        const config = getGoogleSheetsConfig();
+        const scriptUrl = config.scriptUrl;
         if (!scriptUrl) {
-            addLog('info', 'Google Sheets Script URL не настроен, смена сохранена только локально');
+            addLog('warning', 'Google Sheets Script URL не настроен, смена сохранена только локально');
             return;
         }
         
         try {
-            const config = getGoogleSheetsConfig();
             const sheetName = config.sheetName || '[АВТО] Гравёры_отчёты';
             
             addLog('info', `=== ОТПРАВКА ОТКРЫТИЯ СМЕНЫ ===`);
@@ -507,14 +508,14 @@
     }
     
     async function saveReportToGoogleSheets(report) {
-        const scriptUrl = localStorage.getItem('googleSheetsScriptUrl');
+        const config = getGoogleSheetsConfig();
+        const scriptUrl = config.scriptUrl;
         if (!scriptUrl) {
-            addLog('info', 'Google Sheets Script URL не настроен, отчет сохранен только локально');
+            addLog('warning', 'Google Sheets Script URL не настроен, отчет сохранен только локально');
             return;
         }
         
         try {
-            const config = getGoogleSheetsConfig();
             const sheetName = config.sheetName || '[АВТО] Гравёры_отчёты';
             const reportData = {
                 id: report.id,

@@ -152,7 +152,8 @@ function getGoogleSheetsConfig() {
 }
 
 async function checkGoogleSheetsConnection() {
-    const scriptUrl = localStorage.getItem('googleSheetsScriptUrl');
+    const config = getGoogleSheetsConfig();
+    const scriptUrl = config.scriptUrl;
     if (!scriptUrl) {
         addLog('warning', 'Google Sheets Script URL не настроен');
         return;
