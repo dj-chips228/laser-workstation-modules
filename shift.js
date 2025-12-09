@@ -355,11 +355,12 @@
         
         try {
             const config = getGoogleSheetsConfig();
+            const sheetName = config.sheetName || '[АВТО] Гравёры_отчёты';
             addLog('info', `Проверка активной смены в Google Sheets для устройства: ${deviceSerial}`);
             
             const formData = new URLSearchParams({
                 action: 'get_active_shift',
-                sheet_name: config.sheetName,
+                sheet_name: sheetName,
                 device_serial: deviceSerial
             });
             
