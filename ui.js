@@ -5,7 +5,13 @@
     'use strict';
     
     const addLog = window.addLog || console.log;
-    const getIsConnected = () => window.isConnected && window.currentIp;
+    const getIsConnected = () => {
+        const connected = window.isConnected && window.currentIp;
+        if (!connected && (window.isConnected || window.currentIp)) {
+            console.warn('⚠️ Частичное подключение:', { isConnected: window.isConnected, currentIp: window.currentIp });
+        }
+        return connected;
+    };
     const getFlowState = () => window.flowState;
     const getActiveShift = () => window.activeShift;
     const getFramingActive = () => window.framingActive;
